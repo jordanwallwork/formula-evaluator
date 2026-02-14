@@ -86,18 +86,91 @@ const ast = evaluator.parse(tokens);
 - **Strings**: `"hello world"`
 - **Booleans**: `true`, `false`
 
-## Adding Custom Functions
+### `registerFunction(name, fn)`
 
-You can extend the evaluator by adding functions directly to the `FUNCTIONS` object:
+Register a custom function that can be called in formulas. Returns the evaluator instance so calls can be chained.
 
 ```js
 const evaluator = new FormulaEvaluator();
 
-evaluator.FUNCTIONS.double = (x) => x * 2;
-evaluator.FUNCTIONS.min = (...args) => Math.min(...args);
+evaluator
+  .registerFunction('double', (x) => x * 2)
+  .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max));
 
-evaluator.evaluate('double(5)');     // 10
-evaluator.evaluate('min(3, 1, 2)');  // 1
+evaluator.evaluate('double(5)');        // 10
+evaluator.evaluate('clamp(15, 0, 10)'); // 10
+```
+
+Custom functions receive their arguments already evaluated, so they work naturally with variables, operators, and nested calls:
+
+```js
+evaluator.registerFunction('double', (x) => x * 2);
+
+evaluator.evaluate('double(n)', { n: 4 });   // 8
+evaluator.evaluate('double(3) + 1');          // 7
+evaluator.evaluate('double(sum(1, 2))');      // 6
+```
+
+You can also override built-in functions:
+
+```js
+evaluator.registerFunction('sum', (...args) => args.reduce((a, b) => a + b, 0));
+```
+
+### `listFunctions()`
+
+Returns the names of all registered public functions (excludes internal operator mappings):
+
+```js
+evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if']
+
+evaluator.registerFunction('double', (x) => x * 2);
+evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if', 'double']
+```
+
+## Function Registry
+
+For advanced use cases you can work with the function registry directly. The `createFunctionRegistry` factory and the `builtinFunctions` map are available as named exports:
+
+```js
+import { createFunctionRegistry, builtinFunctions } from 'formula-evaluator';
+```
+
+### `createFunctionRegistry(initialFunctions?)`
+
+Creates a standalone registry pre-loaded with the built-in functions. Useful when you want to prepare a set of functions before constructing an evaluator, or share a registry definition across modules.
+
+```js
+import { createFunctionRegistry } from 'formula-evaluator';
+
+const registry = createFunctionRegistry({
+  double: (x) => x * 2,
+});
+
+registry.register('triple', (x) => x * 3);
+registry.has('sum');          // true  (built-in)
+registry.has('double');       // true  (initial)
+registry.has('triple');       // true  (registered)
+registry.get('double')(5);    // 10
+registry.list();              // ['upper', 'join', 'sum', 'avg', 'if', 'double', 'triple']
+registry.unregister('triple');
+registry.has('triple');       // false
+```
+
+Built-in functions are protected and cannot be unregistered:
+
+```js
+registry.unregister('sum'); // throws Error: Cannot unregister built-in function "sum"
+```
+
+### `builtinFunctions`
+
+A frozen object containing the default function implementations. Useful for inspection or when building a custom registry from scratch:
+
+```js
+import { builtinFunctions } from 'formula-evaluator';
+
+Object.keys(builtinFunctions); // ['upper', 'join', 'sum', 'avg', 'if', '__add', '__sub', '__eq']
 ```
 
 ## Development
