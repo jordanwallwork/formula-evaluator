@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import FormulaEvaluator from '../src/index.js';
+import FormulaEvaluator, { builtinFunctions, createFunctionRegistry } from '../src/index.js';
 
 describe('FormulaEvaluator', () => {
   let evaluator;
@@ -309,6 +309,173 @@ describe('FormulaEvaluator', () => {
     it('does not include function names as dependencies', () => {
       const deps = evaluator.getDependencies('sum(1, 2)');
       expect(deps).toEqual([]);
+    });
+  });
+
+  // --- registerFunction ---
+  describe('registerFunction', () => {
+    it('registers and evaluates a custom function', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      expect(evaluator.evaluate('double(5)')).toBe(10);
+    });
+
+    it('supports chaining', () => {
+      evaluator
+        .registerFunction('double', (x) => x * 2)
+        .registerFunction('inc', (x) => x + 1);
+      expect(evaluator.evaluate('inc(double(3))')).toBe(7);
+    });
+
+    it('custom functions work with variables', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      expect(evaluator.evaluate('double(n)', { n: 4 })).toBe(8);
+    });
+
+    it('custom functions work with operators', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      expect(evaluator.evaluate('double(3) + 1')).toBe(7);
+    });
+
+    it('can override a built-in function', () => {
+      evaluator.registerFunction('sum', (a, b) => a + b + 100);
+      expect(evaluator.evaluate('sum(1, 2)')).toBe(103);
+    });
+
+    it('throws if name is not a string', () => {
+      expect(() => evaluator.registerFunction(123, () => {})).toThrow(
+        'Function name must be a non-empty string'
+      );
+    });
+
+    it('throws if name is empty', () => {
+      expect(() => evaluator.registerFunction('', () => {})).toThrow(
+        'Function name must be a non-empty string'
+      );
+    });
+
+    it('throws if fn is not a function', () => {
+      expect(() => evaluator.registerFunction('bad', 'not a fn')).toThrow(
+        'Function implementation must be a function'
+      );
+    });
+
+    it('does not affect other evaluator instances', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      const other = new FormulaEvaluator();
+      expect(() => other.evaluate('double(5)')).toThrow('Function "double" not found');
+    });
+  });
+
+  // --- listFunctions ---
+  describe('listFunctions', () => {
+    it('includes built-in public functions', () => {
+      const fns = evaluator.listFunctions();
+      expect(fns).toContain('upper');
+      expect(fns).toContain('join');
+      expect(fns).toContain('sum');
+      expect(fns).toContain('avg');
+      expect(fns).toContain('if');
+    });
+
+    it('excludes internal operator functions', () => {
+      const fns = evaluator.listFunctions();
+      expect(fns).not.toContain('__add');
+      expect(fns).not.toContain('__sub');
+      expect(fns).not.toContain('__eq');
+    });
+
+    it('includes custom registered functions', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      expect(evaluator.listFunctions()).toContain('double');
+    });
+  });
+});
+
+// --- Functions module ---
+describe('functions module', () => {
+  describe('builtinFunctions', () => {
+    it('exports all built-in functions', () => {
+      expect(builtinFunctions).toHaveProperty('upper');
+      expect(builtinFunctions).toHaveProperty('join');
+      expect(builtinFunctions).toHaveProperty('sum');
+      expect(builtinFunctions).toHaveProperty('avg');
+      expect(builtinFunctions).toHaveProperty('if');
+      expect(builtinFunctions).toHaveProperty('__add');
+      expect(builtinFunctions).toHaveProperty('__sub');
+      expect(builtinFunctions).toHaveProperty('__eq');
+    });
+
+    it('is frozen (immutable)', () => {
+      expect(Object.isFrozen(builtinFunctions)).toBe(true);
+    });
+  });
+
+  describe('createFunctionRegistry', () => {
+    it('creates a registry with built-in functions', () => {
+      const registry = createFunctionRegistry();
+      expect(registry.has('sum')).toBe(true);
+      expect(registry.get('sum')(1, 2, 3)).toBe(6);
+    });
+
+    it('accepts initial extra functions', () => {
+      const registry = createFunctionRegistry({ double: (x) => x * 2 });
+      expect(registry.has('double')).toBe(true);
+      expect(registry.get('double')(5)).toBe(10);
+    });
+
+    it('register adds a new function', () => {
+      const registry = createFunctionRegistry();
+      registry.register('triple', (x) => x * 3);
+      expect(registry.get('triple')(4)).toBe(12);
+    });
+
+    it('has returns false for unknown functions', () => {
+      const registry = createFunctionRegistry();
+      expect(registry.has('nonexistent')).toBe(false);
+    });
+
+    it('get returns undefined for unknown functions', () => {
+      const registry = createFunctionRegistry();
+      expect(registry.get('nonexistent')).toBeUndefined();
+    });
+
+    it('unregister removes a custom function', () => {
+      const registry = createFunctionRegistry({ custom: () => 1 });
+      registry.unregister('custom');
+      expect(registry.has('custom')).toBe(false);
+    });
+
+    it('unregister throws for built-in functions', () => {
+      const registry = createFunctionRegistry();
+      expect(() => registry.unregister('sum')).toThrow(
+        'Cannot unregister built-in function "sum"'
+      );
+    });
+
+    it('list returns public function names', () => {
+      const registry = createFunctionRegistry({ double: (x) => x * 2 });
+      const names = registry.list();
+      expect(names).toContain('upper');
+      expect(names).toContain('double');
+      expect(names).not.toContain('__add');
+    });
+
+    it('getAll returns a snapshot of all functions', () => {
+      const registry = createFunctionRegistry();
+      const all = registry.getAll();
+      expect(all).toHaveProperty('sum');
+      expect(all).toHaveProperty('__add');
+      // Modifying snapshot does not affect registry
+      delete all.sum;
+      expect(registry.has('sum')).toBe(true);
+    });
+
+    it('each registry instance is independent', () => {
+      const a = createFunctionRegistry();
+      const b = createFunctionRegistry();
+      a.register('only_in_a', () => 'a');
+      expect(a.has('only_in_a')).toBe(true);
+      expect(b.has('only_in_a')).toBe(false);
     });
   });
 });
