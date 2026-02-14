@@ -3,10 +3,19 @@
   "version": "1.0.0",
   "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
   "type": "module",
+  "files": [
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "formula",
@@ -16,6 +25,10 @@
   ],
   "author": "Jordan Wallwork",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jordanwallwork/formula-evaluator.git"
+  },
   "devDependencies": {
     "vitest": "^3.0.0"
   }
