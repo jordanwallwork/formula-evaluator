@@ -53,19 +53,20 @@ class FormulaEvaluator {
    *
    * @param {string} name - The function name (used in formula strings)
    * @param {import('./functions.js').FormulaFunction} fn - The function implementation
+   * @param {string} [description=''] - A human-readable description of the function
    * @returns {this} The evaluator instance, for chaining
    * @throws {Error} If name is not a non-empty string or fn is not a function
    *
    * @example
    * evaluator
-   *   .registerFunction('double', (x) => x * 2)
-   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max));
+   *   .registerFunction('double', (x) => x * 2, 'Doubles a number')
+   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max), 'Restricts a number to a range');
    *
    * evaluator.evaluate('double(5)');       // 10
    * evaluator.evaluate('clamp(15, 0, 10)'); // 10
    */
-  registerFunction(name, fn) {
-    this._functions.register(name, fn);
+  registerFunction(name, fn, description = '') {
+    this._functions.register(name, fn, description);
     return this;
   }
 
@@ -77,6 +78,16 @@ class FormulaEvaluator {
    */
   listFunctions() {
     return this._functions.list();
+  }
+
+  /**
+   * Returns the names and descriptions of all registered public functions
+   * (excludes internal operator mappings).
+   *
+   * @returns {Array<{name: string, description: string}>}
+   */
+  describeFunctions() {
+    return this._functions.describe();
   }
 
   /**
@@ -92,7 +103,7 @@ class FormulaEvaluator {
       { type: this.TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
       { type: this.TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
       { type: this.TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
-      { type: this.TOKEN_TYPES.OPERATOR,   regex: /[+=-]/g },
+      { type: this.TOKEN_TYPES.OPERATOR,   regex: />=|<=|[+=\-><]/g },
       { type: this.TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
       { type: this.TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
     ];
@@ -138,7 +149,7 @@ class FormulaEvaluator {
       if (currentToken && currentToken.type === this.TOKEN_TYPES.OPERATOR) {
         const opToken = tokens[pos++];
         const right = parseExpression();
-        const opMap = { '+': '__add', '-': '__sub', '=': '__eq' };
+        const opMap = { '+': '__add', '-': '__sub', '=': '__eq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte' };
         return { type: 'function', name: opMap[opToken.value], args: [node, right] };
       }
       return node;
@@ -204,6 +215,15 @@ class FormulaEvaluator {
       }
 
       if (node.type === 'function') {
+        // iferr requires lazy evaluation: catch errors from the first arg
+        if (node.name === 'iferr') {
+          try {
+            return run(node.args[0]);
+          } catch {
+            return run(node.args[1]);
+          }
+        }
+
         const fn = this._functions.get(node.name);
         if (!fn) throw new Error(`Function "${node.name}" not found`);
         return fn(...node.args.map(run));
