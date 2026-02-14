@@ -4,6 +4,10 @@
   "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
   "main": "src/index.js",
   "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "keywords": [
     "formula",
     "parser",
@@ -11,5 +15,8 @@
     "ast"
   ],
   "author": "Jordan Wallwork",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
 }
