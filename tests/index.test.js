@@ -174,6 +174,56 @@ describe('FormulaEvaluator', () => {
       // 1 + 2 + 3 parses as 1 + (2 + 3) = 6
       expect(evaluator.evaluate('1 + 2 + 3')).toBe(6);
     });
+
+    it('greater than (true)', () => {
+      expect(evaluator.evaluate('5 > 3')).toBe(true);
+    });
+
+    it('greater than (false)', () => {
+      expect(evaluator.evaluate('3 > 5')).toBe(false);
+    });
+
+    it('greater than or equal (true - greater)', () => {
+      expect(evaluator.evaluate('5 >= 3')).toBe(true);
+    });
+
+    it('greater than or equal (true - equal)', () => {
+      expect(evaluator.evaluate('5 >= 5')).toBe(true);
+    });
+
+    it('greater than or equal (false)', () => {
+      expect(evaluator.evaluate('3 >= 5')).toBe(false);
+    });
+
+    it('less than (true)', () => {
+      expect(evaluator.evaluate('3 < 5')).toBe(true);
+    });
+
+    it('less than (false)', () => {
+      expect(evaluator.evaluate('5 < 3')).toBe(false);
+    });
+
+    it('less than or equal (true - less)', () => {
+      expect(evaluator.evaluate('3 <= 5')).toBe(true);
+    });
+
+    it('less than or equal (true - equal)', () => {
+      expect(evaluator.evaluate('5 <= 5')).toBe(true);
+    });
+
+    it('less than or equal (false)', () => {
+      expect(evaluator.evaluate('5 <= 3')).toBe(false);
+    });
+
+    it('comparison operators work with variables', () => {
+      expect(evaluator.evaluate('x > 10', { x: 15 })).toBe(true);
+      expect(evaluator.evaluate('x <= 10', { x: 10 })).toBe(true);
+    });
+
+    it('comparison operators work inside if()', () => {
+      expect(evaluator.evaluate('if(x > 100, "high", "low")', { x: 150 })).toBe('high');
+      expect(evaluator.evaluate('if(x < 100, "low", "high")', { x: 50 })).toBe('low');
+    });
   });
 
   // --- Evaluate: Variables ---
@@ -558,6 +608,10 @@ describe('FormulaEvaluator', () => {
       expect(fns).not.toContain('__add');
       expect(fns).not.toContain('__sub');
       expect(fns).not.toContain('__eq');
+      expect(fns).not.toContain('__gt');
+      expect(fns).not.toContain('__gte');
+      expect(fns).not.toContain('__lt');
+      expect(fns).not.toContain('__lte');
     });
 
     it('includes custom registered functions', () => {
@@ -588,6 +642,10 @@ describe('functions module', () => {
       expect(builtinFunctions).toHaveProperty('__add');
       expect(builtinFunctions).toHaveProperty('__sub');
       expect(builtinFunctions).toHaveProperty('__eq');
+      expect(builtinFunctions).toHaveProperty('__gt');
+      expect(builtinFunctions).toHaveProperty('__gte');
+      expect(builtinFunctions).toHaveProperty('__lt');
+      expect(builtinFunctions).toHaveProperty('__lte');
     });
 
     it('is frozen (immutable)', () => {

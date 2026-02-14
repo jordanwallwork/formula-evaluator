@@ -65,6 +65,18 @@ export const builtinFunctions = Object.freeze({
 
   /** @private Equality operator. */
   __eq: (a, b) => a === b,
+
+  /** @private Greater-than operator. */
+  __gt: (a, b) => a > b,
+
+  /** @private Greater-than-or-equal operator. */
+  __gte: (a, b) => a >= b,
+
+  /** @private Less-than operator. */
+  __lt: (a, b) => a < b,
+
+  /** @private Less-than-or-equal operator. */
+  __lte: (a, b) => a <= b,
 });
 
 /**

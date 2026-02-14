@@ -92,7 +92,7 @@ class FormulaEvaluator {
       { type: this.TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
       { type: this.TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
       { type: this.TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
-      { type: this.TOKEN_TYPES.OPERATOR,   regex: /[+=-]/g },
+      { type: this.TOKEN_TYPES.OPERATOR,   regex: />=|<=|[+=\-><]/g },
       { type: this.TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
       { type: this.TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
     ];
@@ -138,7 +138,7 @@ class FormulaEvaluator {
       if (currentToken && currentToken.type === this.TOKEN_TYPES.OPERATOR) {
         const opToken = tokens[pos++];
         const right = parseExpression();
-        const opMap = { '+': '__add', '-': '__sub', '=': '__eq' };
+        const opMap = { '+': '__add', '-': '__sub', '=': '__eq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte' };
         return { type: 'function', name: opMap[opToken.value], args: [node, right] };
       }
       return node;
