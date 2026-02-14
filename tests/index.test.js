@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import FormulaEvaluator from './index.js';
+import FormulaEvaluator from '../src/index.js';
 
 describe('FormulaEvaluator', () => {
   let evaluator;
