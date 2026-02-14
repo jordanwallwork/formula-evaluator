@@ -30,6 +30,33 @@ export const builtinFunctions = Object.freeze({
   /** Returns `a` if `cond` is truthy, otherwise `b`. */
   if: (cond, a, b) => (cond ? a : b),
 
+  /** Returns the first non-null/non-undefined value. */
+  coalesce: (...args) => args.find(a => a != null),
+
+  /** Returns true if a value is an empty string or null/undefined. */
+  isblank: (val) => val === '' || val == null,
+
+  /** Returns true if all arguments are truthy. */
+  and: (...args) => args.every(Boolean),
+
+  /** Returns true if any argument is truthy. */
+  or: (...args) => args.some(Boolean),
+
+  /** Returns val; actual error-catching is handled in the evaluator. */
+  iferr: (val) => val,
+
+  /** Rounds a number to a specific decimal precision. */
+  round: (n, d) => Number(Math.round(n + 'e' + d) + 'e-' + d),
+
+  /** Restricts a number to a range. */
+  clamp: (val, min, max) => Math.min(Math.max(val, min), max),
+
+  /** Returns the absolute value of a number. */
+  abs: (n) => Math.abs(n),
+
+  /** Concatenates all arguments without a separator. */
+  concat: (...args) => args.join(''),
+
   /** @private Addition operator. */
   __add: (a, b) => a + b,
 

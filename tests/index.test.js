@@ -240,6 +240,173 @@ describe('FormulaEvaluator', () => {
     });
   });
 
+  // --- Evaluate: Utility Functions ---
+  describe('evaluate - coalesce', () => {
+    it('returns first non-null value', () => {
+      expect(evaluator.evaluate('coalesce("hello", "world")')).toBe('hello');
+    });
+
+    it('skips null values from context', () => {
+      expect(evaluator.evaluate('coalesce(a, "Guest")', { a: null })).toBe('Guest');
+    });
+
+    it('skips undefined values from context', () => {
+      expect(evaluator.evaluate('coalesce(a, "Guest")', { a: undefined })).toBe('Guest');
+    });
+
+    it('returns 0 (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, 99)', { a: 0 })).toBe(0);
+    });
+
+    it('returns false (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, 99)', { a: false })).toBe(false);
+    });
+
+    it('returns empty string (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, "fallback")', { a: '' })).toBe('');
+    });
+  });
+
+  describe('evaluate - isblank', () => {
+    it('returns true for empty string', () => {
+      expect(evaluator.evaluate('isblank("")')).toBe(true);
+    });
+
+    it('returns true for null', () => {
+      expect(evaluator.evaluate('isblank(a)', { a: null })).toBe(true);
+    });
+
+    it('returns true for undefined', () => {
+      expect(evaluator.evaluate('isblank(a)', { a: undefined })).toBe(true);
+    });
+
+    it('returns false for non-empty string', () => {
+      expect(evaluator.evaluate('isblank("hello")')).toBe(false);
+    });
+
+    it('returns false for zero', () => {
+      expect(evaluator.evaluate('isblank(0)', { })).toBe(false);
+    });
+
+    it('returns false for false', () => {
+      expect(evaluator.evaluate('isblank(false)')).toBe(false);
+    });
+  });
+
+  describe('evaluate - and / or', () => {
+    it('and() returns true when all truthy', () => {
+      expect(evaluator.evaluate('and(true, true, true)')).toBe(true);
+    });
+
+    it('and() returns false when one is falsy', () => {
+      expect(evaluator.evaluate('and(true, false, true)')).toBe(false);
+    });
+
+    it('and() works with expressions', () => {
+      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 2 })).toBe(true);
+      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 3 })).toBe(false);
+    });
+
+    it('or() returns true when any is truthy', () => {
+      expect(evaluator.evaluate('or(false, true, false)')).toBe(true);
+    });
+
+    it('or() returns false when all falsy', () => {
+      expect(evaluator.evaluate('or(false, false, false)')).toBe(false);
+    });
+
+    it('or() works with expressions', () => {
+      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 2 })).toBe(true);
+      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 3 })).toBe(false);
+    });
+  });
+
+  describe('evaluate - iferr', () => {
+    it('returns value when no error', () => {
+      expect(evaluator.evaluate('iferr(sum(1, 2), 0)')).toBe(3);
+    });
+
+    it('returns fallback when first arg throws (undefined variable)', () => {
+      expect(evaluator.evaluate('iferr(undefined_var, "fallback")')).toBe('fallback');
+    });
+
+    it('returns fallback when first arg throws (unknown function)', () => {
+      expect(evaluator.evaluate('iferr(nonexistent(1), 0)')).toBe(0);
+    });
+
+    it('returns fallback as expression result', () => {
+      expect(evaluator.evaluate('iferr(missing, 1 + 2)')).toBe(3);
+    });
+  });
+
+  describe('evaluate - round', () => {
+    it('rounds to specified decimal places', () => {
+      expect(evaluator.evaluate('round(3.14159, 2)')).toBeCloseTo(3.14);
+    });
+
+    it('rounds to zero decimal places', () => {
+      expect(evaluator.evaluate('round(3.7, 0)')).toBe(4);
+    });
+
+    it('rounds half up', () => {
+      expect(evaluator.evaluate('round(2.5, 0)')).toBe(3);
+    });
+
+    it('rounds negative numbers', () => {
+      expect(evaluator.evaluate('round(0 - 2.567, 2)')).toBeCloseTo(-2.57);
+    });
+  });
+
+  describe('evaluate - clamp', () => {
+    it('returns value when within range', () => {
+      expect(evaluator.evaluate('clamp(50, 0, 100)')).toBe(50);
+    });
+
+    it('clamps to min when below', () => {
+      expect(evaluator.evaluate('clamp(0 - 10, 0, 100)')).toBe(0);
+    });
+
+    it('clamps to max when above', () => {
+      expect(evaluator.evaluate('clamp(150, 0, 100)')).toBe(100);
+    });
+
+    it('works with variables', () => {
+      expect(evaluator.evaluate('clamp(Score, 0, 100)', { Score: 120 })).toBe(100);
+    });
+  });
+
+  describe('evaluate - abs', () => {
+    it('returns positive number unchanged', () => {
+      expect(evaluator.evaluate('abs(5)')).toBe(5);
+    });
+
+    it('converts negative to positive', () => {
+      expect(evaluator.evaluate('abs(0 - 5)')).toBe(5);
+    });
+
+    it('returns zero for zero', () => {
+      expect(evaluator.evaluate('abs(0)')).toBe(0);
+    });
+  });
+
+  describe('evaluate - concat', () => {
+    it('concatenates strings', () => {
+      expect(evaluator.evaluate('concat("hello", " ", "world")')).toBe('hello world');
+    });
+
+    it('concatenates without separator', () => {
+      expect(evaluator.evaluate('concat("a", "b", "c")')).toBe('abc');
+    });
+
+    it('coerces non-strings', () => {
+      expect(evaluator.evaluate('concat("score", 100)')).toBe('score100');
+    });
+
+    it('works with variables', () => {
+      expect(evaluator.evaluate('concat(first, last)', { first: 'John', last: 'Doe' })).toBe('JohnDoe');
+    });
+  });
+
   // --- Evaluate: Nested / Complex ---
   describe('evaluate - nested and complex expressions', () => {
     it('nested function calls', () => {
@@ -375,6 +542,15 @@ describe('FormulaEvaluator', () => {
       expect(fns).toContain('sum');
       expect(fns).toContain('avg');
       expect(fns).toContain('if');
+      expect(fns).toContain('coalesce');
+      expect(fns).toContain('isblank');
+      expect(fns).toContain('and');
+      expect(fns).toContain('or');
+      expect(fns).toContain('iferr');
+      expect(fns).toContain('round');
+      expect(fns).toContain('clamp');
+      expect(fns).toContain('abs');
+      expect(fns).toContain('concat');
     });
 
     it('excludes internal operator functions', () => {
@@ -400,6 +576,15 @@ describe('functions module', () => {
       expect(builtinFunctions).toHaveProperty('sum');
       expect(builtinFunctions).toHaveProperty('avg');
       expect(builtinFunctions).toHaveProperty('if');
+      expect(builtinFunctions).toHaveProperty('coalesce');
+      expect(builtinFunctions).toHaveProperty('isblank');
+      expect(builtinFunctions).toHaveProperty('and');
+      expect(builtinFunctions).toHaveProperty('or');
+      expect(builtinFunctions).toHaveProperty('iferr');
+      expect(builtinFunctions).toHaveProperty('round');
+      expect(builtinFunctions).toHaveProperty('clamp');
+      expect(builtinFunctions).toHaveProperty('abs');
+      expect(builtinFunctions).toHaveProperty('concat');
       expect(builtinFunctions).toHaveProperty('__add');
       expect(builtinFunctions).toHaveProperty('__sub');
       expect(builtinFunctions).toHaveProperty('__eq');

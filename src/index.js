@@ -204,6 +204,15 @@ class FormulaEvaluator {
       }
 
       if (node.type === 'function') {
+        // iferr requires lazy evaluation: catch errors from the first arg
+        if (node.name === 'iferr') {
+          try {
+            return run(node.args[0]);
+          } catch {
+            return run(node.args[1]);
+          }
+        }
+
         const fn = this._functions.get(node.name);
         if (!fn) throw new Error(`Function "${node.name}" not found`);
         return fn(...node.args.map(run));
