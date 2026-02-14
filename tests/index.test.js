@@ -558,6 +558,20 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.evaluate('sum(1, 2)')).toBe(103);
     });
 
+    it('accepts an optional description', () => {
+      evaluator.registerFunction('double', (x) => x * 2, 'Doubles a number');
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('defaults description to empty string', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: '' });
+    });
+
     it('throws if name is not a string', () => {
       expect(() => evaluator.registerFunction(123, () => {})).toThrow(
         'Function name must be a non-empty string'
@@ -619,33 +633,89 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.listFunctions()).toContain('double');
     });
   });
+
+  // --- describeFunctions ---
+  describe('describeFunctions', () => {
+    it('returns names and descriptions for built-in functions', () => {
+      const described = evaluator.describeFunctions();
+      const sumEntry = described.find(d => d.name === 'sum');
+      expect(sumEntry).toEqual({ name: 'sum', description: 'Sums all arguments numerically' });
+    });
+
+    it('excludes internal operator functions', () => {
+      const described = evaluator.describeFunctions();
+      const names = described.map(d => d.name);
+      expect(names).not.toContain('__add');
+      expect(names).not.toContain('__sub');
+      expect(names).not.toContain('__eq');
+      expect(names).not.toContain('__gt');
+    });
+
+    it('includes custom functions with descriptions', () => {
+      evaluator.registerFunction('double', (x) => x * 2, 'Doubles a number');
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('includes all public built-in functions', () => {
+      const described = evaluator.describeFunctions();
+      const names = described.map(d => d.name);
+      expect(names).toContain('upper');
+      expect(names).toContain('join');
+      expect(names).toContain('sum');
+      expect(names).toContain('avg');
+      expect(names).toContain('if');
+      expect(names).toContain('coalesce');
+      expect(names).toContain('isblank');
+      expect(names).toContain('and');
+      expect(names).toContain('or');
+      expect(names).toContain('iferr');
+      expect(names).toContain('round');
+      expect(names).toContain('clamp');
+      expect(names).toContain('abs');
+      expect(names).toContain('concat');
+    });
+
+    it('every entry has a non-empty description for built-ins', () => {
+      const described = evaluator.describeFunctions();
+      for (const { name, description } of described) {
+        // Only check built-in functions (not custom ones)
+        if (['upper', 'join', 'sum', 'avg', 'if'].includes(name)) {
+          expect(description).toBeTruthy();
+        }
+      }
+    });
+  });
 });
 
 // --- Functions module ---
 describe('functions module', () => {
   describe('builtinFunctions', () => {
-    it('exports all built-in functions', () => {
-      expect(builtinFunctions).toHaveProperty('upper');
-      expect(builtinFunctions).toHaveProperty('join');
-      expect(builtinFunctions).toHaveProperty('sum');
-      expect(builtinFunctions).toHaveProperty('avg');
-      expect(builtinFunctions).toHaveProperty('if');
-      expect(builtinFunctions).toHaveProperty('coalesce');
-      expect(builtinFunctions).toHaveProperty('isblank');
-      expect(builtinFunctions).toHaveProperty('and');
-      expect(builtinFunctions).toHaveProperty('or');
-      expect(builtinFunctions).toHaveProperty('iferr');
-      expect(builtinFunctions).toHaveProperty('round');
-      expect(builtinFunctions).toHaveProperty('clamp');
-      expect(builtinFunctions).toHaveProperty('abs');
-      expect(builtinFunctions).toHaveProperty('concat');
-      expect(builtinFunctions).toHaveProperty('__add');
-      expect(builtinFunctions).toHaveProperty('__sub');
-      expect(builtinFunctions).toHaveProperty('__eq');
-      expect(builtinFunctions).toHaveProperty('__gt');
-      expect(builtinFunctions).toHaveProperty('__gte');
-      expect(builtinFunctions).toHaveProperty('__lt');
-      expect(builtinFunctions).toHaveProperty('__lte');
+    it('exports all built-in function definitions', () => {
+      const names = [
+        'upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank',
+        'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat',
+        '__add', '__sub', '__eq', '__gt', '__gte', '__lt', '__lte',
+      ];
+      for (const name of names) {
+        expect(builtinFunctions).toHaveProperty(name);
+      }
+    });
+
+    it('each entry has fn and description properties', () => {
+      for (const [name, def] of Object.entries(builtinFunctions)) {
+        expect(typeof def.fn).toBe('function');
+        expect(typeof def.description).toBe('string');
+      }
+    });
+
+    it('public functions have non-empty descriptions', () => {
+      for (const [name, def] of Object.entries(builtinFunctions)) {
+        if (!name.startsWith('__')) {
+          expect(def.description.length).toBeGreaterThan(0);
+        }
+      }
     });
 
     it('is frozen (immutable)', () => {
@@ -660,7 +730,7 @@ describe('functions module', () => {
       expect(registry.get('sum')(1, 2, 3)).toBe(6);
     });
 
-    it('accepts initial extra functions', () => {
+    it('accepts initial extra functions (plain functions)', () => {
       const registry = createFunctionRegistry({ double: (x) => x * 2 });
       expect(registry.has('double')).toBe(true);
       expect(registry.get('double')(5)).toBe(10);
@@ -670,6 +740,13 @@ describe('functions module', () => {
       const registry = createFunctionRegistry();
       registry.register('triple', (x) => x * 3);
       expect(registry.get('triple')(4)).toBe(12);
+    });
+
+    it('register accepts a description', () => {
+      const registry = createFunctionRegistry();
+      registry.register('triple', (x) => x * 3, 'Triples a number');
+      const entry = registry.describe().find(d => d.name === 'triple');
+      expect(entry).toEqual({ name: 'triple', description: 'Triples a number' });
     });
 
     it('has returns false for unknown functions', () => {
@@ -703,10 +780,30 @@ describe('functions module', () => {
       expect(names).not.toContain('__add');
     });
 
-    it('getAll returns a snapshot of all functions', () => {
+    it('describe returns names and descriptions for public functions', () => {
+      const registry = createFunctionRegistry();
+      const described = registry.describe();
+      const sumEntry = described.find(d => d.name === 'sum');
+      expect(sumEntry).toEqual({ name: 'sum', description: 'Sums all arguments numerically' });
+      // Should not include operators
+      const names = described.map(d => d.name);
+      expect(names).not.toContain('__add');
+    });
+
+    it('describe includes custom functions', () => {
+      const registry = createFunctionRegistry();
+      registry.register('double', (x) => x * 2, 'Doubles a number');
+      const described = registry.describe();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('getAll returns a snapshot of all function definitions', () => {
       const registry = createFunctionRegistry();
       const all = registry.getAll();
       expect(all).toHaveProperty('sum');
+      expect(all.sum).toHaveProperty('fn');
+      expect(all.sum).toHaveProperty('description');
       expect(all).toHaveProperty('__add');
       // Modifying snapshot does not affect registry
       delete all.sum;

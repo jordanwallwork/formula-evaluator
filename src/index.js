@@ -53,19 +53,20 @@ class FormulaEvaluator {
    *
    * @param {string} name - The function name (used in formula strings)
    * @param {import('./functions.js').FormulaFunction} fn - The function implementation
+   * @param {string} [description=''] - A human-readable description of the function
    * @returns {this} The evaluator instance, for chaining
    * @throws {Error} If name is not a non-empty string or fn is not a function
    *
    * @example
    * evaluator
-   *   .registerFunction('double', (x) => x * 2)
-   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max));
+   *   .registerFunction('double', (x) => x * 2, 'Doubles a number')
+   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max), 'Restricts a number to a range');
    *
    * evaluator.evaluate('double(5)');       // 10
    * evaluator.evaluate('clamp(15, 0, 10)'); // 10
    */
-  registerFunction(name, fn) {
-    this._functions.register(name, fn);
+  registerFunction(name, fn, description = '') {
+    this._functions.register(name, fn, description);
     return this;
   }
 
@@ -77,6 +78,16 @@ class FormulaEvaluator {
    */
   listFunctions() {
     return this._functions.list();
+  }
+
+  /**
+   * Returns the names and descriptions of all registered public functions
+   * (excludes internal operator mappings).
+   *
+   * @returns {Array<{name: string, description: string}>}
+   */
+  describeFunctions() {
+    return this._functions.describe();
   }
 
   /**
