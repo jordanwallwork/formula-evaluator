@@ -1,0 +1,22 @@
+{
+  "name": "formula-evaluator",
+  "version": "1.0.0",
+  "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "formula",
+    "parser",
+    "evaluator",
+    "ast"
+  ],
+  "author": "Jordan Wallwork",
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
