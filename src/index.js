@@ -1,24 +1,43 @@
 /**
- * FormulaEvaluator: A lightweight, extensible formula engine
- * Features: Variable tracking, nested functions, and operator precedence.
+ * @module formula-evaluator
+ * A lightweight, extensible formula engine with variable tracking,
+ * nested functions, and operator precedence.
+ */
+
+import { createFunctionRegistry } from './functions.js';
+
+export { builtinFunctions, createFunctionRegistry } from './functions.js';
+
+/**
+ * Evaluates string-based formulas with support for variables, functions,
+ * and arithmetic operators.
+ *
+ * @example
+ * const evaluator = new FormulaEvaluator({ tax: 0.2 });
+ * evaluator.registerFunction('discount', (price, pct) => price * (1 - pct));
+ * evaluator.evaluate('discount(100, tax)'); // 80
  */
 class FormulaEvaluator {
+  /**
+   * Creates a new FormulaEvaluator instance.
+   *
+   * @param {Record<string, *>} [globalContext={}] - Variables available to every evaluation
+   */
   constructor(globalContext = {}) {
+    /** @type {Record<string, *>} */
     this.context = globalContext;
 
-    // Core Function Library (Easily extensible)
-    this.FUNCTIONS = {
-      upper: (str) => String(str).toUpperCase(),
-      join: (sep, ...args) => args.join(sep),
-      sum: (...args) => args.reduce((a, b) => Number(a) + Number(b), 0),
-      avg: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
-      if: (cond, a, b) => (cond ? a : b),
-      // Internal Operator Mappings
-      __add: (a, b) => a + b,
-      __sub: (a, b) => a - b,
-      __eq: (a, b) => a === b,
-    };
+    /**
+     * Internal function registry.
+     * @private
+     * @type {import('./functions.js').FunctionRegistry}
+     */
+    this._functions = createFunctionRegistry();
 
+    /**
+     * Token type constants used by the tokenizer.
+     * @type {Readonly<Record<string, string>>}
+     */
     this.TOKEN_TYPES = {
       NUMBER: 'number',
       STRING: 'string',
@@ -29,6 +48,44 @@ class FormulaEvaluator {
     };
   }
 
+  /**
+   * Registers a custom function that can be called in formulas.
+   *
+   * @param {string} name - The function name (used in formula strings)
+   * @param {import('./functions.js').FormulaFunction} fn - The function implementation
+   * @returns {this} The evaluator instance, for chaining
+   * @throws {Error} If name is not a non-empty string or fn is not a function
+   *
+   * @example
+   * evaluator
+   *   .registerFunction('double', (x) => x * 2)
+   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max));
+   *
+   * evaluator.evaluate('double(5)');       // 10
+   * evaluator.evaluate('clamp(15, 0, 10)'); // 10
+   */
+  registerFunction(name, fn) {
+    this._functions.register(name, fn);
+    return this;
+  }
+
+  /**
+   * Lists the names of all registered public functions
+   * (excludes internal operator mappings).
+   *
+   * @returns {string[]} Array of function names
+   */
+  listFunctions() {
+    return this._functions.list();
+  }
+
+  /**
+   * Tokenizes a formula string into an array of tokens.
+   *
+   * @param {string} str - The formula string to tokenize
+   * @returns {Array<{type: string, value: string, start: number, end: number}>} The token array
+   * @throws {Error} If an unexpected character is encountered
+   */
   tokenize(str) {
     const tokens = [];
     const rules = [
@@ -65,7 +122,12 @@ class FormulaEvaluator {
     return tokens;
   }
 
-  // --- Parser Logic ---
+  /**
+   * Parses an array of tokens into an abstract syntax tree (AST).
+   *
+   * @param {Array<{type: string, value: string}>} tokens - Tokens produced by {@link tokenize}
+   * @returns {*} The root AST node
+   */
   parse(tokens) {
     let pos = 0;
 
@@ -116,7 +178,19 @@ class FormulaEvaluator {
     return parseExpression();
   }
 
-  // --- Execution & Analysis ---
+  /**
+   * Evaluates a formula string and returns the result.
+   *
+   * @param {string} formula - The formula to evaluate
+   * @param {Record<string, *>} [localContext={}] - Variables scoped to this evaluation
+   *   (overrides global context for matching keys)
+   * @returns {*} The evaluation result
+   * @throws {Error} If a referenced variable or function is not found
+   *
+   * @example
+   * evaluator.evaluate('sum(1, 2, 3)');           // 6
+   * evaluator.evaluate('x + 1', { x: 10 });       // 11
+   */
   evaluate(formula, localContext = {}) {
     const ast = this.parse(this.tokenize(formula));
     const ctx = { ...this.context, ...localContext };
@@ -130,7 +204,7 @@ class FormulaEvaluator {
       }
 
       if (node.type === 'function') {
-        const fn = this.FUNCTIONS[node.name];
+        const fn = this._functions.get(node.name);
         if (!fn) throw new Error(`Function "${node.name}" not found`);
         return fn(...node.args.map(run));
       }
@@ -139,6 +213,15 @@ class FormulaEvaluator {
     return run(ast);
   }
 
+  /**
+   * Returns the variable names referenced in a formula (excludes function names).
+   *
+   * @param {string} formula - The formula to analyze
+   * @returns {string[]} Deduplicated array of variable names
+   *
+   * @example
+   * evaluator.getDependencies('sum(x, y) + z'); // ['x', 'y', 'z']
+   */
   getDependencies(formula) {
     const ast = this.parse(this.tokenize(formula));
     const deps = new Set();

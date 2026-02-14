@@ -4,7 +4,8 @@
   "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./functions": "./src/functions.js"
   },
   "type": "module",
   "files": [
