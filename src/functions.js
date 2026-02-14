@@ -11,43 +11,140 @@
  */
 
 /**
+ * A function definition containing the implementation and a human-readable description.
+ * @typedef {Object} FunctionDef
+ * @property {FormulaFunction} fn - The function implementation
+ * @property {string} description - A human-readable description of what the function does
+ */
+
+/**
  * Built-in functions included in every new evaluator instance.
- * @type {Readonly<Record<string, FormulaFunction>>}
+ * Each entry contains a `fn` implementation and a human-readable `description`.
+ * @type {Readonly<Record<string, FunctionDef>>}
  */
 export const builtinFunctions = Object.freeze({
-  /** Converts a value to an uppercase string. */
-  upper: (str) => String(str).toUpperCase(),
+  upper: {
+    fn: (str) => String(str).toUpperCase(),
+    description: 'Converts a value to an uppercase string',
+  },
 
-  /** Joins arguments with a separator. */
-  join: (sep, ...args) => args.join(sep),
+  join: {
+    fn: (sep, ...args) => args.join(sep),
+    description: 'Joins arguments with a separator',
+  },
 
-  /** Sums all arguments numerically. */
-  sum: (...args) => args.reduce((a, b) => Number(a) + Number(b), 0),
+  sum: {
+    fn: (...args) => args.reduce((a, b) => Number(a) + Number(b), 0),
+    description: 'Sums all arguments numerically',
+  },
 
-  /** Returns the arithmetic mean of all arguments. */
-  avg: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
+  avg: {
+    fn: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
+    description: 'Returns the arithmetic mean of all arguments',
+  },
 
-  /** Returns `a` if `cond` is truthy, otherwise `b`. */
-  if: (cond, a, b) => (cond ? a : b),
+  if: {
+    fn: (cond, a, b) => (cond ? a : b),
+    description: 'Returns the second argument if the condition is truthy, otherwise the third',
+  },
 
-  /** @private Addition operator. */
-  __add: (a, b) => a + b,
+  coalesce: {
+    fn: (...args) => args.find(a => a != null),
+    description: 'Returns the first non-null/non-undefined value',
+  },
 
-  /** @private Subtraction operator. */
-  __sub: (a, b) => a - b,
+  isblank: {
+    fn: (val) => val === '' || val == null,
+    description: 'Returns true if a value is an empty string or null/undefined',
+  },
 
-  /** @private Equality operator. */
-  __eq: (a, b) => a === b,
+  and: {
+    fn: (...args) => args.every(Boolean),
+    description: 'Returns true if all arguments are truthy',
+  },
+
+  or: {
+    fn: (...args) => args.some(Boolean),
+    description: 'Returns true if any argument is truthy',
+  },
+
+  iferr: {
+    fn: (val) => val,
+    description: 'Returns the first argument, or the second if the first throws an error',
+  },
+
+  round: {
+    fn: (n, d) => Number(Math.round(n + 'e' + d) + 'e-' + d),
+    description: 'Rounds a number to a specific decimal precision',
+  },
+
+  clamp: {
+    fn: (val, min, max) => Math.min(Math.max(val, min), max),
+    description: 'Restricts a number to a given range',
+  },
+
+  abs: {
+    fn: (n) => Math.abs(n),
+    description: 'Returns the absolute value of a number',
+  },
+
+  concat: {
+    fn: (...args) => args.join(''),
+    description: 'Concatenates all arguments without a separator',
+  },
+
+  /** @private */
+  __add: {
+    fn: (a, b) => a + b,
+    description: 'Addition operator',
+  },
+
+  /** @private */
+  __sub: {
+    fn: (a, b) => a - b,
+    description: 'Subtraction operator',
+  },
+
+  /** @private */
+  __eq: {
+    fn: (a, b) => a === b,
+    description: 'Equality operator',
+  },
+
+  /** @private */
+  __gt: {
+    fn: (a, b) => a > b,
+    description: 'Greater-than operator',
+  },
+
+  /** @private */
+  __gte: {
+    fn: (a, b) => a >= b,
+    description: 'Greater-than-or-equal operator',
+  },
+
+  /** @private */
+  __lt: {
+    fn: (a, b) => a < b,
+    description: 'Less-than operator',
+  },
+
+  /** @private */
+  __lte: {
+    fn: (a, b) => a <= b,
+    description: 'Less-than-or-equal operator',
+  },
 });
 
 /**
  * @typedef {Object} FunctionRegistry
- * @property {(name: string, fn: FormulaFunction) => void} register - Register a new function
+ * @property {(name: string, fn: FormulaFunction, description?: string) => void} register - Register a new function
  * @property {(name: string) => FormulaFunction|undefined} get - Retrieve a function by name
  * @property {(name: string) => boolean} has - Check whether a function is registered
  * @property {(name: string) => boolean} unregister - Remove a custom (non-built-in) function
  * @property {() => string[]} list - List public function names (excludes internal __ operators)
- * @property {() => Record<string, FormulaFunction>} getAll - Get a snapshot of all registered functions
+ * @property {() => Array<{name: string, description: string}>} describe - List public function names and descriptions
+ * @property {() => Record<string, FunctionDef>} getAll - Get a snapshot of all registered function definitions
  */
 
 /**
@@ -65,38 +162,46 @@ export const builtinFunctions = Object.freeze({
  * const registry = createFunctionRegistry({
  *   double: (x) => x * 2,
  * });
- * registry.register('triple', (x) => x * 3);
+ * registry.register('triple', (x) => x * 3, 'Triples a number');
  * registry.get('double')(5); // 10
  * registry.list(); // ['upper', 'join', 'sum', 'avg', 'if', 'double', 'triple']
+ * registry.describe(); // [{ name: 'upper', description: 'Converts a value to an uppercase string' }, ...]
  */
 export function createFunctionRegistry(initialFunctions = {}) {
-  /** @type {Record<string, FormulaFunction>} */
-  const functions = { ...builtinFunctions, ...initialFunctions };
+  /** @type {Record<string, FunctionDef>} */
+  const functions = { ...builtinFunctions };
+
+  for (const [name, val] of Object.entries(initialFunctions)) {
+    functions[name] = typeof val === 'function'
+      ? { fn: val, description: '' }
+      : { ...val };
+  }
 
   return {
     /**
      * Registers a function under the given name.
      * @param {string} name - Function name (used in formula strings)
      * @param {FormulaFunction} fn - The implementation
+     * @param {string} [description=''] - A human-readable description of the function
      * @throws {Error} If name is not a non-empty string or fn is not a function
      */
-    register(name, fn) {
+    register(name, fn, description = '') {
       if (typeof name !== 'string' || !name) {
         throw new Error('Function name must be a non-empty string');
       }
       if (typeof fn !== 'function') {
         throw new Error('Function implementation must be a function');
       }
-      functions[name] = fn;
+      functions[name] = { fn, description };
     },
 
     /**
-     * Retrieves a function by name.
+     * Retrieves a function implementation by name.
      * @param {string} name
      * @returns {FormulaFunction|undefined}
      */
     get(name) {
-      return functions[name];
+      return functions[name]?.fn;
     },
 
     /**
@@ -130,8 +235,19 @@ export function createFunctionRegistry(initialFunctions = {}) {
     },
 
     /**
-     * Returns a shallow copy of all registered functions.
-     * @returns {Record<string, FormulaFunction>}
+     * Returns names and descriptions of all public functions
+     * (excludes internal `__` operators).
+     * @returns {Array<{name: string, description: string}>}
+     */
+    describe() {
+      return Object.entries(functions)
+        .filter(([name]) => !name.startsWith('__'))
+        .map(([name, { description }]) => ({ name, description }));
+    },
+
+    /**
+     * Returns a shallow copy of all registered function definitions.
+     * @returns {Record<string, FunctionDef>}
      */
     getAll() {
       return { ...functions };

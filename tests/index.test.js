@@ -174,6 +174,56 @@ describe('FormulaEvaluator', () => {
       // 1 + 2 + 3 parses as 1 + (2 + 3) = 6
       expect(evaluator.evaluate('1 + 2 + 3')).toBe(6);
     });
+
+    it('greater than (true)', () => {
+      expect(evaluator.evaluate('5 > 3')).toBe(true);
+    });
+
+    it('greater than (false)', () => {
+      expect(evaluator.evaluate('3 > 5')).toBe(false);
+    });
+
+    it('greater than or equal (true - greater)', () => {
+      expect(evaluator.evaluate('5 >= 3')).toBe(true);
+    });
+
+    it('greater than or equal (true - equal)', () => {
+      expect(evaluator.evaluate('5 >= 5')).toBe(true);
+    });
+
+    it('greater than or equal (false)', () => {
+      expect(evaluator.evaluate('3 >= 5')).toBe(false);
+    });
+
+    it('less than (true)', () => {
+      expect(evaluator.evaluate('3 < 5')).toBe(true);
+    });
+
+    it('less than (false)', () => {
+      expect(evaluator.evaluate('5 < 3')).toBe(false);
+    });
+
+    it('less than or equal (true - less)', () => {
+      expect(evaluator.evaluate('3 <= 5')).toBe(true);
+    });
+
+    it('less than or equal (true - equal)', () => {
+      expect(evaluator.evaluate('5 <= 5')).toBe(true);
+    });
+
+    it('less than or equal (false)', () => {
+      expect(evaluator.evaluate('5 <= 3')).toBe(false);
+    });
+
+    it('comparison operators work with variables', () => {
+      expect(evaluator.evaluate('x > 10', { x: 15 })).toBe(true);
+      expect(evaluator.evaluate('x <= 10', { x: 10 })).toBe(true);
+    });
+
+    it('comparison operators work inside if()', () => {
+      expect(evaluator.evaluate('if(x > 100, "high", "low")', { x: 150 })).toBe('high');
+      expect(evaluator.evaluate('if(x < 100, "low", "high")', { x: 50 })).toBe('low');
+    });
   });
 
   // --- Evaluate: Variables ---
@@ -237,6 +287,173 @@ describe('FormulaEvaluator', () => {
 
     it('throws for unknown functions', () => {
       expect(() => evaluator.evaluate('unknown(1)')).toThrow('Function "unknown" not found');
+    });
+  });
+
+  // --- Evaluate: Utility Functions ---
+  describe('evaluate - coalesce', () => {
+    it('returns first non-null value', () => {
+      expect(evaluator.evaluate('coalesce("hello", "world")')).toBe('hello');
+    });
+
+    it('skips null values from context', () => {
+      expect(evaluator.evaluate('coalesce(a, "Guest")', { a: null })).toBe('Guest');
+    });
+
+    it('skips undefined values from context', () => {
+      expect(evaluator.evaluate('coalesce(a, "Guest")', { a: undefined })).toBe('Guest');
+    });
+
+    it('returns 0 (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, 99)', { a: 0 })).toBe(0);
+    });
+
+    it('returns false (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, 99)', { a: false })).toBe(false);
+    });
+
+    it('returns empty string (not skipped as null)', () => {
+      expect(evaluator.evaluate('coalesce(a, "fallback")', { a: '' })).toBe('');
+    });
+  });
+
+  describe('evaluate - isblank', () => {
+    it('returns true for empty string', () => {
+      expect(evaluator.evaluate('isblank("")')).toBe(true);
+    });
+
+    it('returns true for null', () => {
+      expect(evaluator.evaluate('isblank(a)', { a: null })).toBe(true);
+    });
+
+    it('returns true for undefined', () => {
+      expect(evaluator.evaluate('isblank(a)', { a: undefined })).toBe(true);
+    });
+
+    it('returns false for non-empty string', () => {
+      expect(evaluator.evaluate('isblank("hello")')).toBe(false);
+    });
+
+    it('returns false for zero', () => {
+      expect(evaluator.evaluate('isblank(0)', { })).toBe(false);
+    });
+
+    it('returns false for false', () => {
+      expect(evaluator.evaluate('isblank(false)')).toBe(false);
+    });
+  });
+
+  describe('evaluate - and / or', () => {
+    it('and() returns true when all truthy', () => {
+      expect(evaluator.evaluate('and(true, true, true)')).toBe(true);
+    });
+
+    it('and() returns false when one is falsy', () => {
+      expect(evaluator.evaluate('and(true, false, true)')).toBe(false);
+    });
+
+    it('and() works with expressions', () => {
+      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 2 })).toBe(true);
+      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 3 })).toBe(false);
+    });
+
+    it('or() returns true when any is truthy', () => {
+      expect(evaluator.evaluate('or(false, true, false)')).toBe(true);
+    });
+
+    it('or() returns false when all falsy', () => {
+      expect(evaluator.evaluate('or(false, false, false)')).toBe(false);
+    });
+
+    it('or() works with expressions', () => {
+      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 2 })).toBe(true);
+      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 3 })).toBe(false);
+    });
+  });
+
+  describe('evaluate - iferr', () => {
+    it('returns value when no error', () => {
+      expect(evaluator.evaluate('iferr(sum(1, 2), 0)')).toBe(3);
+    });
+
+    it('returns fallback when first arg throws (undefined variable)', () => {
+      expect(evaluator.evaluate('iferr(undefined_var, "fallback")')).toBe('fallback');
+    });
+
+    it('returns fallback when first arg throws (unknown function)', () => {
+      expect(evaluator.evaluate('iferr(nonexistent(1), 0)')).toBe(0);
+    });
+
+    it('returns fallback as expression result', () => {
+      expect(evaluator.evaluate('iferr(missing, 1 + 2)')).toBe(3);
+    });
+  });
+
+  describe('evaluate - round', () => {
+    it('rounds to specified decimal places', () => {
+      expect(evaluator.evaluate('round(3.14159, 2)')).toBeCloseTo(3.14);
+    });
+
+    it('rounds to zero decimal places', () => {
+      expect(evaluator.evaluate('round(3.7, 0)')).toBe(4);
+    });
+
+    it('rounds half up', () => {
+      expect(evaluator.evaluate('round(2.5, 0)')).toBe(3);
+    });
+
+    it('rounds negative numbers', () => {
+      expect(evaluator.evaluate('round(0 - 2.567, 2)')).toBeCloseTo(-2.57);
+    });
+  });
+
+  describe('evaluate - clamp', () => {
+    it('returns value when within range', () => {
+      expect(evaluator.evaluate('clamp(50, 0, 100)')).toBe(50);
+    });
+
+    it('clamps to min when below', () => {
+      expect(evaluator.evaluate('clamp(0 - 10, 0, 100)')).toBe(0);
+    });
+
+    it('clamps to max when above', () => {
+      expect(evaluator.evaluate('clamp(150, 0, 100)')).toBe(100);
+    });
+
+    it('works with variables', () => {
+      expect(evaluator.evaluate('clamp(Score, 0, 100)', { Score: 120 })).toBe(100);
+    });
+  });
+
+  describe('evaluate - abs', () => {
+    it('returns positive number unchanged', () => {
+      expect(evaluator.evaluate('abs(5)')).toBe(5);
+    });
+
+    it('converts negative to positive', () => {
+      expect(evaluator.evaluate('abs(0 - 5)')).toBe(5);
+    });
+
+    it('returns zero for zero', () => {
+      expect(evaluator.evaluate('abs(0)')).toBe(0);
+    });
+  });
+
+  describe('evaluate - concat', () => {
+    it('concatenates strings', () => {
+      expect(evaluator.evaluate('concat("hello", " ", "world")')).toBe('hello world');
+    });
+
+    it('concatenates without separator', () => {
+      expect(evaluator.evaluate('concat("a", "b", "c")')).toBe('abc');
+    });
+
+    it('coerces non-strings', () => {
+      expect(evaluator.evaluate('concat("score", 100)')).toBe('score100');
+    });
+
+    it('works with variables', () => {
+      expect(evaluator.evaluate('concat(first, last)', { first: 'John', last: 'Doe' })).toBe('JohnDoe');
     });
   });
 
@@ -341,6 +558,20 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.evaluate('sum(1, 2)')).toBe(103);
     });
 
+    it('accepts an optional description', () => {
+      evaluator.registerFunction('double', (x) => x * 2, 'Doubles a number');
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('defaults description to empty string', () => {
+      evaluator.registerFunction('double', (x) => x * 2);
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: '' });
+    });
+
     it('throws if name is not a string', () => {
       expect(() => evaluator.registerFunction(123, () => {})).toThrow(
         'Function name must be a non-empty string'
@@ -375,6 +606,15 @@ describe('FormulaEvaluator', () => {
       expect(fns).toContain('sum');
       expect(fns).toContain('avg');
       expect(fns).toContain('if');
+      expect(fns).toContain('coalesce');
+      expect(fns).toContain('isblank');
+      expect(fns).toContain('and');
+      expect(fns).toContain('or');
+      expect(fns).toContain('iferr');
+      expect(fns).toContain('round');
+      expect(fns).toContain('clamp');
+      expect(fns).toContain('abs');
+      expect(fns).toContain('concat');
     });
 
     it('excludes internal operator functions', () => {
@@ -382,6 +622,10 @@ describe('FormulaEvaluator', () => {
       expect(fns).not.toContain('__add');
       expect(fns).not.toContain('__sub');
       expect(fns).not.toContain('__eq');
+      expect(fns).not.toContain('__gt');
+      expect(fns).not.toContain('__gte');
+      expect(fns).not.toContain('__lt');
+      expect(fns).not.toContain('__lte');
     });
 
     it('includes custom registered functions', () => {
@@ -389,20 +633,89 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.listFunctions()).toContain('double');
     });
   });
+
+  // --- describeFunctions ---
+  describe('describeFunctions', () => {
+    it('returns names and descriptions for built-in functions', () => {
+      const described = evaluator.describeFunctions();
+      const sumEntry = described.find(d => d.name === 'sum');
+      expect(sumEntry).toEqual({ name: 'sum', description: 'Sums all arguments numerically' });
+    });
+
+    it('excludes internal operator functions', () => {
+      const described = evaluator.describeFunctions();
+      const names = described.map(d => d.name);
+      expect(names).not.toContain('__add');
+      expect(names).not.toContain('__sub');
+      expect(names).not.toContain('__eq');
+      expect(names).not.toContain('__gt');
+    });
+
+    it('includes custom functions with descriptions', () => {
+      evaluator.registerFunction('double', (x) => x * 2, 'Doubles a number');
+      const described = evaluator.describeFunctions();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('includes all public built-in functions', () => {
+      const described = evaluator.describeFunctions();
+      const names = described.map(d => d.name);
+      expect(names).toContain('upper');
+      expect(names).toContain('join');
+      expect(names).toContain('sum');
+      expect(names).toContain('avg');
+      expect(names).toContain('if');
+      expect(names).toContain('coalesce');
+      expect(names).toContain('isblank');
+      expect(names).toContain('and');
+      expect(names).toContain('or');
+      expect(names).toContain('iferr');
+      expect(names).toContain('round');
+      expect(names).toContain('clamp');
+      expect(names).toContain('abs');
+      expect(names).toContain('concat');
+    });
+
+    it('every entry has a non-empty description for built-ins', () => {
+      const described = evaluator.describeFunctions();
+      for (const { name, description } of described) {
+        // Only check built-in functions (not custom ones)
+        if (['upper', 'join', 'sum', 'avg', 'if'].includes(name)) {
+          expect(description).toBeTruthy();
+        }
+      }
+    });
+  });
 });
 
 // --- Functions module ---
 describe('functions module', () => {
   describe('builtinFunctions', () => {
-    it('exports all built-in functions', () => {
-      expect(builtinFunctions).toHaveProperty('upper');
-      expect(builtinFunctions).toHaveProperty('join');
-      expect(builtinFunctions).toHaveProperty('sum');
-      expect(builtinFunctions).toHaveProperty('avg');
-      expect(builtinFunctions).toHaveProperty('if');
-      expect(builtinFunctions).toHaveProperty('__add');
-      expect(builtinFunctions).toHaveProperty('__sub');
-      expect(builtinFunctions).toHaveProperty('__eq');
+    it('exports all built-in function definitions', () => {
+      const names = [
+        'upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank',
+        'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat',
+        '__add', '__sub', '__eq', '__gt', '__gte', '__lt', '__lte',
+      ];
+      for (const name of names) {
+        expect(builtinFunctions).toHaveProperty(name);
+      }
+    });
+
+    it('each entry has fn and description properties', () => {
+      for (const [name, def] of Object.entries(builtinFunctions)) {
+        expect(typeof def.fn).toBe('function');
+        expect(typeof def.description).toBe('string');
+      }
+    });
+
+    it('public functions have non-empty descriptions', () => {
+      for (const [name, def] of Object.entries(builtinFunctions)) {
+        if (!name.startsWith('__')) {
+          expect(def.description.length).toBeGreaterThan(0);
+        }
+      }
     });
 
     it('is frozen (immutable)', () => {
@@ -417,7 +730,7 @@ describe('functions module', () => {
       expect(registry.get('sum')(1, 2, 3)).toBe(6);
     });
 
-    it('accepts initial extra functions', () => {
+    it('accepts initial extra functions (plain functions)', () => {
       const registry = createFunctionRegistry({ double: (x) => x * 2 });
       expect(registry.has('double')).toBe(true);
       expect(registry.get('double')(5)).toBe(10);
@@ -427,6 +740,13 @@ describe('functions module', () => {
       const registry = createFunctionRegistry();
       registry.register('triple', (x) => x * 3);
       expect(registry.get('triple')(4)).toBe(12);
+    });
+
+    it('register accepts a description', () => {
+      const registry = createFunctionRegistry();
+      registry.register('triple', (x) => x * 3, 'Triples a number');
+      const entry = registry.describe().find(d => d.name === 'triple');
+      expect(entry).toEqual({ name: 'triple', description: 'Triples a number' });
     });
 
     it('has returns false for unknown functions', () => {
@@ -460,10 +780,30 @@ describe('functions module', () => {
       expect(names).not.toContain('__add');
     });
 
-    it('getAll returns a snapshot of all functions', () => {
+    it('describe returns names and descriptions for public functions', () => {
+      const registry = createFunctionRegistry();
+      const described = registry.describe();
+      const sumEntry = described.find(d => d.name === 'sum');
+      expect(sumEntry).toEqual({ name: 'sum', description: 'Sums all arguments numerically' });
+      // Should not include operators
+      const names = described.map(d => d.name);
+      expect(names).not.toContain('__add');
+    });
+
+    it('describe includes custom functions', () => {
+      const registry = createFunctionRegistry();
+      registry.register('double', (x) => x * 2, 'Doubles a number');
+      const described = registry.describe();
+      const entry = described.find(d => d.name === 'double');
+      expect(entry).toEqual({ name: 'double', description: 'Doubles a number' });
+    });
+
+    it('getAll returns a snapshot of all function definitions', () => {
       const registry = createFunctionRegistry();
       const all = registry.getAll();
       expect(all).toHaveProperty('sum');
+      expect(all.sum).toHaveProperty('fn');
+      expect(all.sum).toHaveProperty('description');
       expect(all).toHaveProperty('__add');
       // Modifying snapshot does not affect registry
       delete all.sum;
