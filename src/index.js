@@ -174,7 +174,7 @@ class FormulaEvaluator {
             if (tokens[pos] && tokens[pos].value === ',') pos++;
           }
           pos++; // skip )
-          return { type: 'function', name: token.value, args };
+          return { type: 'function', name: token.value.toLowerCase(), args };
         }
         return { type: 'variable', name: token.value };
       }

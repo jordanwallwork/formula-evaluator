@@ -172,7 +172,7 @@ export function createFunctionRegistry(initialFunctions = {}) {
   const functions = { ...builtinFunctions };
 
   for (const [name, val] of Object.entries(initialFunctions)) {
-    functions[name] = typeof val === 'function'
+    functions[name.toLowerCase()] = typeof val === 'function'
       ? { fn: val, description: '' }
       : { ...val };
   }
@@ -192,7 +192,7 @@ export function createFunctionRegistry(initialFunctions = {}) {
       if (typeof fn !== 'function') {
         throw new Error('Function implementation must be a function');
       }
-      functions[name] = { fn, description };
+      functions[name.toLowerCase()] = { fn, description };
     },
 
     /**
@@ -201,7 +201,7 @@ export function createFunctionRegistry(initialFunctions = {}) {
      * @returns {FormulaFunction|undefined}
      */
     get(name) {
-      return functions[name]?.fn;
+      return functions[name.toLowerCase()]?.fn;
     },
 
     /**
@@ -210,7 +210,7 @@ export function createFunctionRegistry(initialFunctions = {}) {
      * @returns {boolean}
      */
     has(name) {
-      return name in functions;
+      return name.toLowerCase() in functions;
     },
 
     /**
@@ -220,10 +220,11 @@ export function createFunctionRegistry(initialFunctions = {}) {
      * @throws {Error} If attempting to unregister a built-in function
      */
     unregister(name) {
-      if (name in builtinFunctions) {
+      const lower = name.toLowerCase();
+      if (lower in builtinFunctions) {
         throw new Error(`Cannot unregister built-in function "${name}"`);
       }
-      return delete functions[name];
+      return delete functions[lower];
     },
 
     /**
