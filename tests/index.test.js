@@ -489,6 +489,55 @@ describe('FormulaEvaluator', () => {
     });
   });
 
+  // --- Evaluate: Parentheses ---
+  describe('evaluate - parentheses', () => {
+    it('simple grouping', () => {
+      expect(evaluator.evaluate('(1 + 2)')).toBe(3);
+    });
+
+    it('grouping changes evaluation order', () => {
+      // Without parens: 5 - (3 - 1) = 3 (right-associative)
+      // With parens: (5 - 3) - 1 = 1
+      expect(evaluator.evaluate('(5 - 3) - 1')).toBe(1);
+    });
+
+    it('double-nested parentheses', () => {
+      expect(evaluator.evaluate('((1 + 2))')).toBe(3);
+    });
+
+    it('deep nesting', () => {
+      expect(evaluator.evaluate('(((5)))')).toBe(5);
+    });
+
+    it('multiple groups', () => {
+      expect(evaluator.evaluate('(1 + 2) + (3 + 4)')).toBe(10);
+    });
+
+    it('left-nested groups', () => {
+      expect(evaluator.evaluate('((1 + 2) + 3) + 4')).toBe(10);
+    });
+
+    it('parentheses inside function args', () => {
+      expect(evaluator.evaluate('sum((1 + 2), (3 + 4))')).toBe(10);
+    });
+
+    it('nested parens with variables', () => {
+      expect(evaluator.evaluate('(x + 1) + (y + 2)', { x: 3, y: 4 })).toBe(10);
+    });
+
+    it('throws on missing closing parenthesis', () => {
+      expect(() => evaluator.evaluate('(1 + 2')).toThrow('Missing closing parenthesis');
+    });
+
+    it('throws on extra closing parenthesis', () => {
+      expect(() => evaluator.evaluate('1 + 2)')).toThrow('Unexpected token');
+    });
+
+    it('throws on empty parentheses', () => {
+      expect(() => evaluator.evaluate('()')).toThrow();
+    });
+  });
+
   // --- getDependencies ---
   describe('getDependencies', () => {
     it('returns empty array for literals', () => {

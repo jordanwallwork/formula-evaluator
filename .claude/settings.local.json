@@ -5,7 +5,8 @@
       "Bash(npm publish:*)",
       "Bash(npm install:*)",
       "Bash(npm config set:*)",
-      "Bash(npm config delete:*)"
+      "Bash(npm config delete:*)",
+      "Bash(npx vitest run)"
     ]
   }
 }

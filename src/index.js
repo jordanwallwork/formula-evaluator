@@ -173,6 +173,9 @@ class FormulaEvaluator {
             args.push(parseExpression());
             if (tokens[pos] && tokens[pos].value === ',') pos++;
           }
+          if (!tokens[pos] || tokens[pos].value !== ')') {
+            throw new Error('Missing closing parenthesis');
+          }
           pos++; // skip )
           return { type: 'function', name: token.value.toLowerCase(), args };
         }
@@ -181,12 +184,19 @@ class FormulaEvaluator {
 
       if (token.value === '(') {
         const node = parseExpression();
+        if (!tokens[pos] || tokens[pos].value !== ')') {
+          throw new Error('Missing closing parenthesis');
+        }
         pos++; // skip )
         return node;
       }
     };
 
-    return parseExpression();
+    const result = parseExpression();
+    if (pos < tokens.length) {
+      throw new Error(`Unexpected token: ${tokens[pos].value}`);
+    }
+    return result;
   }
 
   /**
