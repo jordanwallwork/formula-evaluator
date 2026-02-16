@@ -64,13 +64,34 @@ const ast = evaluator.parse(tokens);
 
 ## Built-in Functions
 
+### Math
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `sum(...args)` | Sum all arguments | `sum(1, 2, 3)` → `6` |
 | `avg(...args)` | Average of all arguments | `avg(2, 4, 6)` → `4` |
+| `round(n, d)` | Round to `d` decimal places | `round(3.456, 2)` → `3.46` |
+| `clamp(val, min, max)` | Restrict a number to a range | `clamp(15, 0, 10)` → `10` |
+| `abs(n)` | Absolute value | `abs(-5)` → `5` |
+
+### String
+
+| Function | Description | Example |
+|----------|-------------|---------|
 | `upper(str)` | Convert to uppercase | `upper("hi")` → `"HI"` |
 | `join(sep, ...args)` | Join arguments with separator | `join("-", "a", "b")` → `"a-b"` |
+| `concat(...args)` | Concatenate all arguments | `concat("a", "b", "c")` → `"abc"` |
+
+### Logic
+
+| Function | Description | Example |
+|----------|-------------|---------|
 | `if(cond, a, b)` | Conditional: returns `a` if truthy, `b` otherwise | `if(true, "yes", "no")` → `"yes"` |
+| `and(...args)` | Returns `true` if all arguments are truthy | `and(true, true)` → `true` |
+| `or(...args)` | Returns `true` if any argument is truthy | `or(false, true)` → `true` |
+| `coalesce(...args)` | Returns the first non-null/non-undefined value | `coalesce(null, 5)` → `5` |
+| `isblank(val)` | Returns `true` if value is empty string or null/undefined | `isblank("")` → `true` |
+| `iferr(val, fallback)` | Returns `val`, or `fallback` if `val` throws an error | `iferr(1/0, 0)` → `0` |
 
 ## Operators
 
@@ -79,6 +100,10 @@ const ast = evaluator.parse(tokens);
 | `+` | Addition | `1 + 2` → `3` |
 | `-` | Subtraction | `5 - 3` → `2` |
 | `=` | Equality check | `5 = 5` → `true` |
+| `>` | Greater than | `5 > 3` → `true` |
+| `>=` | Greater than or equal | `5 >= 5` → `true` |
+| `<` | Less than | `3 < 5` → `true` |
+| `<=` | Less than or equal | `5 <= 5` → `true` |
 
 ## Supported Types
 
@@ -122,10 +147,10 @@ evaluator.registerFunction('sum', (...args) => args.reduce((a, b) => a + b, 0));
 Returns the names of all registered public functions (excludes internal operator mappings):
 
 ```js
-evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if']
+evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank', 'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat']
 
 evaluator.registerFunction('double', (x) => x * 2);
-evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if', 'double']
+evaluator.listFunctions(); // ['upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank', 'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat', 'double']
 ```
 
 ## Function Registry
@@ -152,7 +177,7 @@ registry.has('sum');          // true  (built-in)
 registry.has('double');       // true  (initial)
 registry.has('triple');       // true  (registered)
 registry.get('double')(5);    // 10
-registry.list();              // ['upper', 'join', 'sum', 'avg', 'if', 'double', 'triple']
+registry.list();              // ['upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank', 'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat', 'double', 'triple']
 registry.unregister('triple');
 registry.has('triple');       // false
 ```
@@ -170,7 +195,7 @@ A frozen object containing the default function implementations. Useful for insp
 ```js
 import { builtinFunctions } from 'formula-evaluator';
 
-Object.keys(builtinFunctions); // ['upper', 'join', 'sum', 'avg', 'if', '__add', '__sub', '__eq']
+Object.keys(builtinFunctions); // ['upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank', 'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat', '__add', '__sub', '__eq', '__gt', '__gte', '__lt', '__lte']
 ```
 
 ## Development
