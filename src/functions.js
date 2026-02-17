@@ -39,7 +39,7 @@ export const builtinFunctions = Object.freeze({
   },
 
   avg: {
-    fn: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
+    get fn() { return builtinFunctions.mean.fn; },
     description: 'Alias for mean. Returns the arithmetic mean of all arguments',
   },
 
@@ -151,7 +151,7 @@ export const builtinFunctions = Object.freeze({
   },
 
   not: {
-    fn: (val) => !val,
+    get fn() { return builtinFunctions.__not.fn; },
     description: 'Returns the logical negation of a value',
   },
 
