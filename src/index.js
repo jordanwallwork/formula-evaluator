@@ -107,6 +107,9 @@ class FormulaEvaluator {
    * @throws {Error} If an unexpected character is encountered
    */
   tokenize(str) {
+    if (typeof str !== 'string') {
+      throw new TypeError(`Expected a string, got ${str === null ? 'null' : typeof str}`);
+    }
     const tokens = [];
 
     let pos = 0;

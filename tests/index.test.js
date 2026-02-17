@@ -10,6 +10,18 @@ describe('FormulaEvaluator', () => {
 
   // --- Tokenizer ---
   describe('tokenize', () => {
+    it('throws TypeError for non-string input', () => {
+      expect(() => evaluator.tokenize(null)).toThrow(TypeError);
+      expect(() => evaluator.tokenize(null)).toThrow('Expected a string, got null');
+      expect(() => evaluator.tokenize(undefined)).toThrow('Expected a string, got undefined');
+      expect(() => evaluator.tokenize(42)).toThrow('Expected a string, got number');
+      expect(() => evaluator.tokenize({})).toThrow('Expected a string, got object');
+    });
+
+    it('returns empty array for empty string', () => {
+      expect(evaluator.tokenize('')).toEqual([]);
+    });
+
     it('tokenizes numbers', () => {
       const tokens = evaluator.tokenize('42');
       expect(tokens).toEqual([
@@ -130,6 +142,14 @@ describe('FormulaEvaluator', () => {
   });
 
   // --- Evaluate: Literals ---
+  describe('evaluate - input validation', () => {
+    it('throws TypeError for non-string formula', () => {
+      expect(() => evaluator.evaluate(null)).toThrow(TypeError);
+      expect(() => evaluator.evaluate(undefined)).toThrow(TypeError);
+      expect(() => evaluator.evaluate(123)).toThrow(TypeError);
+    });
+  });
+
   describe('evaluate - literals', () => {
     it('evaluates a number', () => {
       expect(evaluator.evaluate('42')).toBe(42);
