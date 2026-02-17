@@ -227,7 +227,7 @@ class FormulaEvaluator {
    */
   evaluate(formula, localContext = {}) {
     const ast = this.parse(this.tokenize(formula));
-    const ctx = { ...this.context, ...localContext };
+    const ctx = Object.assign(Object.create(this.context), localContext);
 
     const run = (node) => {
       if (typeof node !== 'object' || node === null) return node;
