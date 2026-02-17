@@ -1,6 +1,6 @@
 {
   "name": "formula-evaluator",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
