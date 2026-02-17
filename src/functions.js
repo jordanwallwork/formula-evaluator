@@ -40,7 +40,7 @@ export const builtinFunctions = Object.freeze({
 
   avg: {
     fn: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
-    description: 'Returns the arithmetic mean of all arguments',
+    description: 'Alias for mean. Returns the arithmetic mean of all arguments',
   },
 
   if: {
@@ -88,6 +88,73 @@ export const builtinFunctions = Object.freeze({
     description: 'Returns the absolute value of a number',
   },
 
+  mean: {
+    fn: (...args) => args.reduce((a, b) => a + b, 0) / args.length,
+    description: 'Returns the arithmetic mean of all arguments',
+  },
+
+  median: {
+    fn: (...args) => {
+      const sorted = [...args].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    },
+    description: 'Returns the median of all arguments',
+  },
+
+  mode: {
+    fn: (...args) => {
+      const freq = {};
+      for (const v of args) freq[v] = (freq[v] || 0) + 1;
+      let maxCount = 0, result;
+      for (const [val, count] of Object.entries(freq)) {
+        if (count > maxCount) { maxCount = count; result = val; }
+      }
+      return Number(result);
+    },
+    description: 'Returns the most frequently occurring value',
+  },
+
+  max: {
+    fn: (...args) => Math.max(...args),
+    description: 'Returns the largest of all arguments',
+  },
+
+  min: {
+    fn: (...args) => Math.min(...args),
+    description: 'Returns the smallest of all arguments',
+  },
+
+  isnan: {
+    fn: (val) => Number.isNaN(Number(val)),
+    description: 'Returns true if the value is NaN',
+  },
+
+  lower: {
+    fn: (str) => String(str).toLowerCase(),
+    description: 'Converts a value to a lowercase string',
+  },
+
+  istext: {
+    fn: (val) => typeof val === 'string',
+    description: 'Returns true if the value is a string',
+  },
+
+  contains: {
+    fn: (str, search) => String(str).includes(String(search)),
+    description: 'Returns true if the string contains the search value',
+  },
+
+  replace: {
+    fn: (str, search, replacement) => String(str).replaceAll(String(search), String(replacement)),
+    description: 'Replaces all occurrences of a search value with a replacement',
+  },
+
+  not: {
+    fn: (val) => !val,
+    description: 'Returns the logical negation of a value',
+  },
+
   concat: {
     fn: (...args) => args.join(''),
     description: 'Concatenates all arguments without a separator',
@@ -112,6 +179,12 @@ export const builtinFunctions = Object.freeze({
   },
 
   /** @private */
+  __neq: {
+    fn: (a, b) => a !== b,
+    description: 'Not-equal operator',
+  },
+
+  /** @private */
   __gt: {
     fn: (a, b) => a > b,
     description: 'Greater-than operator',
@@ -133,6 +206,42 @@ export const builtinFunctions = Object.freeze({
   __lte: {
     fn: (a, b) => a <= b,
     description: 'Less-than-or-equal operator',
+  },
+
+  /** @private */
+  __mul: {
+    fn: (a, b) => a * b,
+    description: 'Multiplication operator',
+  },
+
+  /** @private */
+  __div: {
+    fn: (a, b) => a / b,
+    description: 'Division operator',
+  },
+
+  /** @private */
+  __and: {
+    fn: (a, b) => a && b,
+    description: 'Logical AND operator',
+  },
+
+  /** @private */
+  __or: {
+    fn: (a, b) => a || b,
+    description: 'Logical OR operator',
+  },
+
+  /** @private */
+  __not: {
+    fn: (a) => !a,
+    description: 'Logical NOT operator',
+  },
+
+  /** @private */
+  __neg: {
+    fn: (a) => -a,
+    description: 'Unary negation operator',
   },
 });
 

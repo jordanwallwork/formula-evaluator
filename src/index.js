@@ -103,7 +103,7 @@ class FormulaEvaluator {
       { type: this.TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
       { type: this.TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
       { type: this.TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
-      { type: this.TOKEN_TYPES.OPERATOR,   regex: />=|<=|[+=\-><]/g },
+      { type: this.TOKEN_TYPES.OPERATOR,   regex: /!=|>=|<=|[+=\-><&|/*!/]/g },
       { type: this.TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
       { type: this.TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
     ];
@@ -142,15 +142,20 @@ class FormulaEvaluator {
   parse(tokens) {
     let pos = 0;
 
-    const parseExpression = () => {
+    const opMap = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
+    const precedence = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
+
+    const parseExpression = (minPrec = 0) => {
       let node = parseToken();
 
-      const currentToken = tokens[pos];
-      if (currentToken && currentToken.type === this.TOKEN_TYPES.OPERATOR) {
-        const opToken = tokens[pos++];
-        const right = parseExpression();
-        const opMap = { '+': '__add', '-': '__sub', '=': '__eq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte' };
-        return { type: 'function', name: opMap[opToken.value], args: [node, right] };
+      while (pos < tokens.length) {
+        const currentToken = tokens[pos];
+        if (!currentToken || currentToken.type !== this.TOKEN_TYPES.OPERATOR) break;
+        const prec = precedence[currentToken.value];
+        if (prec === undefined || prec < minPrec) break;
+        pos++;
+        const right = parseExpression(prec + 1);
+        node = { type: 'function', name: opMap[currentToken.value], args: [node, right] };
       }
       return node;
     };
@@ -158,6 +163,16 @@ class FormulaEvaluator {
     const parseToken = () => {
       const token = tokens[pos++];
       if (!token) return null;
+
+      if (token.type === this.TOKEN_TYPES.OPERATOR && token.value === '!') {
+        const operand = parseToken();
+        return { type: 'function', name: '__not', args: [operand] };
+      }
+
+      if (token.type === this.TOKEN_TYPES.OPERATOR && token.value === '-') {
+        const operand = parseToken();
+        return { type: 'function', name: '__neg', args: [operand] };
+      }
 
       if (token.type === this.TOKEN_TYPES.NUMBER) return parseFloat(token.value);
       if (token.value === 'true') return true;

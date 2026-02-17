@@ -65,7 +65,7 @@ describe('FormulaEvaluator', () => {
     });
 
     it('throws on unexpected characters', () => {
-      expect(() => evaluator.tokenize('1 & 2')).toThrow('Unexpected character');
+      expect(() => evaluator.tokenize('1 @ 2')).toThrow('Unexpected character');
     });
   });
 
@@ -170,9 +170,42 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.evaluate('5 = 3')).toBe(false);
     });
 
-    it('chains operators with right associativity', () => {
-      // 1 + 2 + 3 parses as 1 + (2 + 3) = 6
+    it('checks inequality (true)', () => {
+      expect(evaluator.evaluate('5 != 3')).toBe(true);
+    });
+
+    it('checks inequality (false)', () => {
+      expect(evaluator.evaluate('5 != 5')).toBe(false);
+    });
+
+    it('chains operators with left associativity', () => {
+      // 1 + 2 + 3 parses as (1 + 2) + 3 = 6
       expect(evaluator.evaluate('1 + 2 + 3')).toBe(6);
+    });
+
+    it('respects multiplication precedence over addition', () => {
+      expect(evaluator.evaluate('2 + 3 * 4')).toBe(14);
+      expect(evaluator.evaluate('3 * 4 + 2')).toBe(14);
+    });
+
+    it('respects division precedence over subtraction', () => {
+      expect(evaluator.evaluate('10 - 6 / 2')).toBe(7);
+      expect(evaluator.evaluate('6 / 2 - 1')).toBe(2);
+    });
+
+    it('left-associative subtraction', () => {
+      // 10 - 3 - 2 should be (10 - 3) - 2 = 5, not 10 - (3 - 2) = 9
+      expect(evaluator.evaluate('10 - 3 - 2')).toBe(5);
+    });
+
+    it('left-associative division', () => {
+      // 24 / 4 / 2 should be (24 / 4) / 2 = 3, not 24 / (4 / 2) = 12
+      expect(evaluator.evaluate('24 / 4 / 2')).toBe(3);
+    });
+
+    it('mixed precedence with multiple operators', () => {
+      // 1 + 2 * 3 + 4 = 1 + 6 + 4 = 11
+      expect(evaluator.evaluate('1 + 2 * 3 + 4')).toBe(11);
     });
 
     it('greater than (true)', () => {
@@ -403,7 +436,7 @@ describe('FormulaEvaluator', () => {
     });
 
     it('rounds negative numbers', () => {
-      expect(evaluator.evaluate('round(0 - 2.567, 2)')).toBeCloseTo(-2.57);
+      expect(evaluator.evaluate('round(-2.567, 2)')).toBeCloseTo(-2.57);
     });
   });
 
@@ -413,7 +446,7 @@ describe('FormulaEvaluator', () => {
     });
 
     it('clamps to min when below', () => {
-      expect(evaluator.evaluate('clamp(0 - 10, 0, 100)')).toBe(0);
+      expect(evaluator.evaluate('clamp(-10, 0, 100)')).toBe(0);
     });
 
     it('clamps to max when above', () => {
@@ -431,7 +464,7 @@ describe('FormulaEvaluator', () => {
     });
 
     it('converts negative to positive', () => {
-      expect(evaluator.evaluate('abs(0 - 5)')).toBe(5);
+      expect(evaluator.evaluate('abs(-5)')).toBe(5);
     });
 
     it('returns zero for zero', () => {
@@ -454,6 +487,202 @@ describe('FormulaEvaluator', () => {
 
     it('works with variables', () => {
       expect(evaluator.evaluate('concat(first, last)', { first: 'John', last: 'Doe' })).toBe('JohnDoe');
+    });
+  });
+
+  // --- Evaluate: New Math Functions ---
+  describe('evaluate - mean', () => {
+    it('returns mean of numbers', () => {
+      expect(evaluator.evaluate('mean(2, 4, 6)')).toBe(4);
+    });
+
+    it('returns mean of single value', () => {
+      expect(evaluator.evaluate('mean(10)')).toBe(10);
+    });
+
+    it('avg is alias of mean', () => {
+      expect(evaluator.evaluate('avg(2, 4, 6)')).toBe(4);
+    });
+  });
+
+  describe('evaluate - median', () => {
+    it('returns middle value for odd count', () => {
+      expect(evaluator.evaluate('median(3, 1, 2)')).toBe(2);
+    });
+
+    it('returns average of two middles for even count', () => {
+      expect(evaluator.evaluate('median(1, 2, 3, 4)')).toBe(2.5);
+    });
+
+    it('returns single value', () => {
+      expect(evaluator.evaluate('median(5)')).toBe(5);
+    });
+  });
+
+  describe('evaluate - mode', () => {
+    it('returns most frequent value', () => {
+      expect(evaluator.evaluate('mode(1, 2, 2, 3)')).toBe(2);
+    });
+
+    it('returns first mode when tied', () => {
+      expect(evaluator.evaluate('mode(1, 1, 2, 2, 3)')).toBe(1);
+    });
+  });
+
+  describe('evaluate - max', () => {
+    it('returns largest value', () => {
+      expect(evaluator.evaluate('max(1, 5, 3)')).toBe(5);
+    });
+
+    it('works with negative numbers', () => {
+      expect(evaluator.evaluate('max(-5, -1, -3)')).toBe(-1);
+    });
+  });
+
+  describe('evaluate - min', () => {
+    it('returns smallest value', () => {
+      expect(evaluator.evaluate('min(1, 5, 3)')).toBe(1);
+    });
+
+    it('works with negative numbers', () => {
+      expect(evaluator.evaluate('min(-5, -1, -3)')).toBe(-5);
+    });
+  });
+
+  describe('evaluate - isnan', () => {
+    it('returns true for NaN value', () => {
+      expect(evaluator.evaluate('isnan(x)', { x: NaN })).toBe(true);
+    });
+
+    it('returns false for number', () => {
+      expect(evaluator.evaluate('isnan(5)')).toBe(false);
+    });
+
+    it('returns true for non-numeric string', () => {
+      expect(evaluator.evaluate('isnan("hello")')).toBe(true);
+    });
+
+    it('returns false for numeric string', () => {
+      expect(evaluator.evaluate('isnan("42")')).toBe(false);
+    });
+  });
+
+  // --- Evaluate: New String Functions ---
+  describe('evaluate - lower', () => {
+    it('converts string to lowercase', () => {
+      expect(evaluator.evaluate('lower("HELLO")')).toBe('hello');
+    });
+
+    it('coerces non-strings', () => {
+      expect(evaluator.evaluate('lower(123)')).toBe('123');
+    });
+  });
+
+  describe('evaluate - istext', () => {
+    it('returns true for string', () => {
+      expect(evaluator.evaluate('istext("hello")')).toBe(true);
+    });
+
+    it('returns false for number', () => {
+      expect(evaluator.evaluate('istext(42)')).toBe(false);
+    });
+
+    it('returns false for boolean', () => {
+      expect(evaluator.evaluate('istext(true)')).toBe(false);
+    });
+  });
+
+  describe('evaluate - contains', () => {
+    it('returns true when string contains search', () => {
+      expect(evaluator.evaluate('contains("hello world", "world")')).toBe(true);
+    });
+
+    it('returns false when string does not contain search', () => {
+      expect(evaluator.evaluate('contains("hello world", "foo")')).toBe(false);
+    });
+
+    it('is case-sensitive', () => {
+      expect(evaluator.evaluate('contains("Hello", "hello")')).toBe(false);
+    });
+  });
+
+  describe('evaluate - replace', () => {
+    it('replaces all occurrences', () => {
+      expect(evaluator.evaluate('replace("hello world", "o", "0")')).toBe('hell0 w0rld');
+    });
+
+    it('replaces substring', () => {
+      expect(evaluator.evaluate('replace("foo bar", "foo", "baz")')).toBe('baz bar');
+    });
+  });
+
+  // --- Evaluate: New Logic Functions ---
+  describe('evaluate - not', () => {
+    it('negates true', () => {
+      expect(evaluator.evaluate('not(true)')).toBe(false);
+    });
+
+    it('negates false', () => {
+      expect(evaluator.evaluate('not(false)')).toBe(true);
+    });
+
+    it('negates truthy value', () => {
+      expect(evaluator.evaluate('not(1)')).toBe(false);
+    });
+
+    it('negates falsy value', () => {
+      expect(evaluator.evaluate('not(0)')).toBe(true);
+    });
+  });
+
+  // --- Evaluate: New Operators ---
+  describe('evaluate - new operators', () => {
+    it('multiplication with *', () => {
+      expect(evaluator.evaluate('3 * 4')).toBe(12);
+    });
+
+    it('division with /', () => {
+      expect(evaluator.evaluate('10 / 2')).toBe(5);
+    });
+
+    it('logical AND with &', () => {
+      expect(evaluator.evaluate('true & true')).toBe(true);
+      expect(evaluator.evaluate('true & false')).toBe(false);
+    });
+
+    it('logical OR with |', () => {
+      expect(evaluator.evaluate('false | true')).toBe(true);
+      expect(evaluator.evaluate('false | false')).toBe(false);
+    });
+
+    it('logical NOT with !', () => {
+      expect(evaluator.evaluate('!true')).toBe(false);
+      expect(evaluator.evaluate('!false')).toBe(true);
+    });
+
+    it('! works with parenthesized expression', () => {
+      expect(evaluator.evaluate('!(1 > 2)')).toBe(true);
+    });
+
+    it('unary negation of a number', () => {
+      expect(evaluator.evaluate('-5')).toBe(-5);
+    });
+
+    it('unary negation of a parenthesized expression', () => {
+      expect(evaluator.evaluate('-(3 + 2)')).toBe(-5);
+    });
+
+    it('double negation', () => {
+      expect(evaluator.evaluate('--5')).toBe(5);
+    });
+
+    it('unary negation with a variable', () => {
+      expect(evaluator.evaluate('-x', { x: 7 })).toBe(-7);
+    });
+
+    it('* and / with variables', () => {
+      expect(evaluator.evaluate('x * y', { x: 3, y: 7 })).toBe(21);
+      expect(evaluator.evaluate('x / y', { x: 20, y: 4 })).toBe(5);
     });
   });
 
@@ -496,9 +725,9 @@ describe('FormulaEvaluator', () => {
     });
 
     it('grouping changes evaluation order', () => {
-      // Without parens: 5 - (3 - 1) = 3 (right-associative)
-      // With parens: (5 - 3) - 1 = 1
-      expect(evaluator.evaluate('(5 - 3) - 1')).toBe(1);
+      // Without parens: 5 - 3 - 1 = (5 - 3) - 1 = 1 (left-associative)
+      // With parens: 5 - (3 - 1) = 3
+      expect(evaluator.evaluate('5 - (3 - 1)')).toBe(3);
     });
 
     it('double-nested parentheses', () => {
@@ -745,7 +974,7 @@ describe('functions module', () => {
       const names = [
         'upper', 'join', 'sum', 'avg', 'if', 'coalesce', 'isblank',
         'and', 'or', 'iferr', 'round', 'clamp', 'abs', 'concat',
-        '__add', '__sub', '__eq', '__gt', '__gte', '__lt', '__lte',
+        '__add', '__sub', '__eq', '__neq', '__gt', '__gte', '__lt', '__lte',
       ];
       for (const name of names) {
         expect(builtinFunctions).toHaveProperty(name);

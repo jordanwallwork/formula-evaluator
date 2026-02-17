@@ -95,15 +95,34 @@ const ast = evaluator.parse(tokens);
 
 ## Operators
 
+### Arithmetic
+
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `+` | Addition | `1 + 2` → `3` |
 | `-` | Subtraction | `5 - 3` → `2` |
-| `=` | Equality check | `5 = 5` → `true` |
+| `-` | Unary negation | `-5` → `-5`, `-(3 + 2)` → `-5` |
+| `*` | Multiplication | `3 * 4` → `12` |
+| `/` | Division | `10 / 2` → `5` |
+
+### Comparison
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `=` | Equality | `5 = 5` → `true` |
+| `!=` | Inequality | `5 != 3` → `true` |
 | `>` | Greater than | `5 > 3` → `true` |
 | `>=` | Greater than or equal | `5 >= 5` → `true` |
 | `<` | Less than | `3 < 5` → `true` |
 | `<=` | Less than or equal | `5 <= 5` → `true` |
+
+### Logical
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `&` | Logical AND | `true & true` → `true` |
+| `\|` | Logical OR | `false \| true` → `true` |
+| `!` | Logical NOT | `!false` → `true` |
 
 ## Supported Types
 

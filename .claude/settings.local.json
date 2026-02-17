@@ -6,7 +6,8 @@
       "Bash(npm install:*)",
       "Bash(npm config set:*)",
       "Bash(npm config delete:*)",
-      "Bash(npx vitest run)"
+      "Bash(npx vitest run)",
+      "Bash(npm test:*)"
     ]
   }
 }
