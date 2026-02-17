@@ -8,6 +8,28 @@ import { createFunctionRegistry } from './functions.js';
 
 export { builtinFunctions, createFunctionRegistry } from './functions.js';
 
+/** @enum {string} */
+const TOKEN_TYPES = Object.freeze({
+  NUMBER: 'number',
+  STRING: 'string',
+  IDENTIFIER: 'identifier',
+  OPERATOR: 'operator',
+  DELIMITER: 'delimiter',
+  WHITESPACE: 'whitespace'
+});
+
+const TOKEN_RULES = [
+  { type: TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
+  { type: TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
+  { type: TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
+  { type: TOKEN_TYPES.OPERATOR,   regex: /!=|>=|<=|[+=\-><&|/*!/]/g },
+  { type: TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
+  { type: TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
+];
+
+const OP_MAP = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
+const OP_PRECEDENCE = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
+
 /**
  * Evaluates string-based formulas with support for variables, functions,
  * and arithmetic operators.
@@ -33,19 +55,6 @@ class FormulaEvaluator {
      * @type {import('./functions.js').FunctionRegistry}
      */
     this._functions = createFunctionRegistry();
-
-    /**
-     * Token type constants used by the tokenizer.
-     * @type {Readonly<Record<string, string>>}
-     */
-    this.TOKEN_TYPES = {
-      NUMBER: 'number',
-      STRING: 'string',
-      IDENTIFIER: 'identifier',
-      OPERATOR: 'operator',
-      DELIMITER: 'delimiter',
-      WHITESPACE: 'whitespace'
-    };
   }
 
   /**
@@ -99,26 +108,18 @@ class FormulaEvaluator {
    */
   tokenize(str) {
     const tokens = [];
-    const rules = [
-      { type: this.TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
-      { type: this.TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
-      { type: this.TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
-      { type: this.TOKEN_TYPES.OPERATOR,   regex: /!=|>=|<=|[+=\-><&|/*!/]/g },
-      { type: this.TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
-      { type: this.TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
-    ];
 
     let pos = 0;
     while (pos < str.length) {
       let found = false;
-      for (const { type, regex } of rules) {
+      for (const { type, regex } of TOKEN_RULES) {
         regex.lastIndex = pos;
         const match = regex.exec(str);
         if (match && match.index === pos) {
-          if (type !== this.TOKEN_TYPES.WHITESPACE) {
+          if (type !== TOKEN_TYPES.WHITESPACE) {
             tokens.push({
               type,
-              value: type === this.TOKEN_TYPES.STRING ? match[1] : match[0],
+              value: type === TOKEN_TYPES.STRING ? match[1] : match[0],
               start: pos,
               end: pos + match[0].length
             });
@@ -142,20 +143,17 @@ class FormulaEvaluator {
   parse(tokens) {
     let pos = 0;
 
-    const opMap = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
-    const precedence = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
-
     const parseExpression = (minPrec = 0) => {
       let node = parseToken();
 
       while (pos < tokens.length) {
         const currentToken = tokens[pos];
-        if (!currentToken || currentToken.type !== this.TOKEN_TYPES.OPERATOR) break;
-        const prec = precedence[currentToken.value];
+        if (!currentToken || currentToken.type !== TOKEN_TYPES.OPERATOR) break;
+        const prec = OP_PRECEDENCE[currentToken.value];
         if (prec === undefined || prec < minPrec) break;
         pos++;
         const right = parseExpression(prec + 1);
-        node = { type: 'function', name: opMap[currentToken.value], args: [node, right] };
+        node = { type: 'function', name: OP_MAP[currentToken.value], args: [node, right] };
       }
       return node;
     };
@@ -164,22 +162,22 @@ class FormulaEvaluator {
       const token = tokens[pos++];
       if (!token) return null;
 
-      if (token.type === this.TOKEN_TYPES.OPERATOR && token.value === '!') {
+      if (token.type === TOKEN_TYPES.OPERATOR && token.value === '!') {
         const operand = parseToken();
         return { type: 'function', name: '__not', args: [operand] };
       }
 
-      if (token.type === this.TOKEN_TYPES.OPERATOR && token.value === '-') {
+      if (token.type === TOKEN_TYPES.OPERATOR && token.value === '-') {
         const operand = parseToken();
         return { type: 'function', name: '__neg', args: [operand] };
       }
 
-      if (token.type === this.TOKEN_TYPES.NUMBER) return parseFloat(token.value);
+      if (token.type === TOKEN_TYPES.NUMBER) return parseFloat(token.value);
       if (token.value === 'true') return true;
       if (token.value === 'false') return false;
-      if (token.type === this.TOKEN_TYPES.STRING) return token.value;
+      if (token.type === TOKEN_TYPES.STRING) return token.value;
 
-      if (token.type === this.TOKEN_TYPES.IDENTIFIER) {
+      if (token.type === TOKEN_TYPES.IDENTIFIER) {
         const nextToken = tokens[pos];
         if (nextToken && nextToken.value === '(') {
           pos++; // skip (
@@ -279,5 +277,7 @@ class FormulaEvaluator {
     return Array.from(deps);
   }
 }
+
+FormulaEvaluator.TOKEN_TYPES = TOKEN_TYPES;
 
 export default FormulaEvaluator;
