@@ -318,6 +318,21 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.evaluate('if(false, "yes", "no")')).toBe('no');
     });
 
+    it('if() does not evaluate the falsy branch when condition is truthy', () => {
+      // undefined_var would throw if evaluated; truthy branch should short-circuit
+      expect(evaluator.evaluate('if(true, "yes", undefined_var)')).toBe('yes');
+    });
+
+    it('if() does not evaluate the truthy branch when condition is falsy', () => {
+      // undefined_var would throw if evaluated; falsy branch should short-circuit
+      expect(evaluator.evaluate('if(false, undefined_var, "no")')).toBe('no');
+    });
+
+    it('if() lazily skips error-producing branches', () => {
+      // iferr in the unused branch should never run
+      expect(evaluator.evaluate('if(x > 0, x, nonexistent(x))', { x: 5 })).toBe(5);
+    });
+
     it('throws for unknown functions', () => {
       expect(() => evaluator.evaluate('unknown(1)')).toThrow('Function "unknown" not found');
     });

@@ -238,6 +238,12 @@ class FormulaEvaluator {
       }
 
       if (node.type === 'function') {
+        // if() requires lazy evaluation: only evaluate the chosen branch
+        if (node.name === 'if') {
+          const cond = run(node.args[0]);
+          return cond ? run(node.args[1]) : run(node.args[2]);
+        }
+
         // iferr requires lazy evaluation: catch errors from the first arg
         if (node.name === 'iferr') {
           try {
