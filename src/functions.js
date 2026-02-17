@@ -116,12 +116,12 @@ export const builtinFunctions = Object.freeze({
   },
 
   max: {
-    fn: (...args) => Math.max(...args),
+    fn: (...args) => args.reduce((a, b) => a > b ? a : b, -Infinity),
     description: 'Returns the largest of all arguments',
   },
 
   min: {
-    fn: (...args) => Math.min(...args),
+    fn: (...args) => args.reduce((a, b) => a < b ? a : b, Infinity),
     description: 'Returns the smallest of all arguments',
   },
 
