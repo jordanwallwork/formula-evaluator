@@ -1,116 +1,85 @@
-/**
- * @module formula-evaluator
- * A lightweight, extensible formula engine with variable tracking,
- * nested functions, and operator precedence.
- */
-
-import { createFunctionRegistry } from './functions.js';
+import { createFunctionRegistry, FunctionRegistry } from './functions.js';
 
 export { builtinFunctions, createFunctionRegistry } from './functions.js';
+export type { FormulaFunction, FunctionDef, FunctionRegistry } from './functions.js';
 
-/** @enum {string} */
 const TOKEN_TYPES = Object.freeze({
   NUMBER: 'number',
   STRING: 'string',
   IDENTIFIER: 'identifier',
   OPERATOR: 'operator',
   DELIMITER: 'delimiter',
-  WHITESPACE: 'whitespace'
-});
+  WHITESPACE: 'whitespace',
+} as const);
 
-const TOKEN_RULES = [
+type TokenType = typeof TOKEN_TYPES[keyof typeof TOKEN_TYPES];
+
+interface TokenRule {
+  type: TokenType;
+  regex: RegExp;
+}
+
+const TOKEN_RULES: TokenRule[] = [
   { type: TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
   { type: TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
   { type: TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
   { type: TOKEN_TYPES.OPERATOR,   regex: /!=|>=|<=|[+=\-><&|/*!/]/g },
   { type: TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
-  { type: TOKEN_TYPES.WHITESPACE, regex: /\s+/g }
+  { type: TOKEN_TYPES.WHITESPACE, regex: /\s+/g },
 ];
 
-const OP_MAP = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
-const OP_PRECEDENCE = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
+interface Token {
+  type: TokenType;
+  value: string;
+  start: number;
+  end: number;
+}
 
-/**
- * Evaluates string-based formulas with support for variables, functions,
- * and arithmetic operators.
- *
- * @example
- * const evaluator = new FormulaEvaluator({ tax: 0.2 });
- * evaluator.registerFunction('discount', (price, pct) => price * (1 - pct));
- * evaluator.evaluate('discount(100, tax)'); // 80
- */
+interface FunctionNode {
+  type: 'function';
+  name: string;
+  args: ASTNode[];
+}
+
+interface VariableNode {
+  type: 'variable';
+  name: string;
+}
+
+type ASTNode = FunctionNode | VariableNode | number | string | boolean | null;
+
+const OP_MAP: Record<string, string> = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
+const OP_PRECEDENCE: Record<string, number> = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
+
 class FormulaEvaluator {
-  /**
-   * Creates a new FormulaEvaluator instance.
-   *
-   * @param {Record<string, *>} [globalContext={}] - Variables available to every evaluation
-   */
-  constructor(globalContext = {}) {
-    /** @type {Record<string, *>} */
-    this.context = globalContext;
+  static TOKEN_TYPES = TOKEN_TYPES;
 
-    /**
-     * Internal function registry.
-     * @private
-     * @type {import('./functions.js').FunctionRegistry}
-     */
+  context: Record<string, any>;
+  private _functions: FunctionRegistry;
+
+  constructor(globalContext: Record<string, any> = {}) {
+    this.context = globalContext;
     this._functions = createFunctionRegistry();
   }
 
-  /**
-   * Registers a custom function that can be called in formulas.
-   *
-   * @param {string} name - The function name (used in formula strings)
-   * @param {import('./functions.js').FormulaFunction} fn - The function implementation
-   * @param {string} [description=''] - A human-readable description of the function
-   * @returns {this} The evaluator instance, for chaining
-   * @throws {Error} If name is not a non-empty string or fn is not a function
-   *
-   * @example
-   * evaluator
-   *   .registerFunction('double', (x) => x * 2, 'Doubles a number')
-   *   .registerFunction('clamp', (val, min, max) => Math.min(Math.max(val, min), max), 'Restricts a number to a range');
-   *
-   * evaluator.evaluate('double(5)');       // 10
-   * evaluator.evaluate('clamp(15, 0, 10)'); // 10
-   */
-  registerFunction(name, fn, description = '') {
+  registerFunction(name: string, fn: (...args: any[]) => any, description = ''): this {
     this._functions.register(name, fn, description);
     return this;
   }
 
-  /**
-   * Lists the names of all registered public functions
-   * (excludes internal operator mappings).
-   *
-   * @returns {string[]} Array of function names
-   */
-  listFunctions() {
+  listFunctions(): string[] {
     return this._functions.list();
   }
 
-  /**
-   * Returns the names and descriptions of all registered public functions
-   * (excludes internal operator mappings).
-   *
-   * @returns {Array<{name: string, description: string}>}
-   */
-  describeFunctions() {
+  describeFunctions(): Array<{ name: string; description: string }> {
     return this._functions.describe();
   }
 
-  /**
-   * Tokenizes a formula string into an array of tokens.
-   *
-   * @param {string} str - The formula string to tokenize
-   * @returns {Array<{type: string, value: string, start: number, end: number}>} The token array
-   * @throws {Error} If an unexpected character is encountered
-   */
-  tokenize(str) {
+  tokenize(str: string): Token[] {
     if (typeof str !== 'string') {
       throw new TypeError(`Expected a string, got ${str === null ? 'null' : typeof str}`);
     }
-    const tokens = [];
+    const tokens: Token[] = [];
 
     let pos = 0;
     while (pos < str.length) {
@@ -124,7 +93,7 @@ class FormulaEvaluator {
               type,
               value: type === TOKEN_TYPES.STRING ? match[1] : match[0],
               start: pos,
-              end: pos + match[0].length
+              end: pos + match[0].length,
             });
           }
           pos += match[0].length;
@@ -137,16 +106,10 @@ class FormulaEvaluator {
     return tokens;
   }
 
-  /**
-   * Parses an array of tokens into an abstract syntax tree (AST).
-   *
-   * @param {Array<{type: string, value: string}>} tokens - Tokens produced by {@link tokenize}
-   * @returns {*} The root AST node
-   */
-  parse(tokens) {
+  parse(tokens: Token[]): ASTNode {
     let pos = 0;
 
-    const parseExpression = (minPrec = 0) => {
+    const parseExpression = (minPrec = 0): ASTNode => {
       let node = parseToken();
 
       while (pos < tokens.length) {
@@ -161,7 +124,7 @@ class FormulaEvaluator {
       return node;
     };
 
-    const parseToken = () => {
+    const parseToken = (): ASTNode => {
       const token = tokens[pos++];
       if (!token) return null;
 
@@ -184,7 +147,7 @@ class FormulaEvaluator {
         const nextToken = tokens[pos];
         if (nextToken && nextToken.value === '(') {
           pos++; // skip (
-          const args = [];
+          const args: ASTNode[] = [];
           while (pos < tokens.length && tokens[pos].value !== ')') {
             args.push(parseExpression());
             if (tokens[pos] && tokens[pos].value === ',') pos++;
@@ -206,6 +169,8 @@ class FormulaEvaluator {
         pos++; // skip )
         return node;
       }
+
+      return null;
     };
 
     const result = parseExpression();
@@ -215,24 +180,11 @@ class FormulaEvaluator {
     return result;
   }
 
-  /**
-   * Evaluates a formula string and returns the result.
-   *
-   * @param {string} formula - The formula to evaluate
-   * @param {Record<string, *>} [localContext={}] - Variables scoped to this evaluation
-   *   (overrides global context for matching keys)
-   * @returns {*} The evaluation result
-   * @throws {Error} If a referenced variable or function is not found
-   *
-   * @example
-   * evaluator.evaluate('sum(1, 2, 3)');           // 6
-   * evaluator.evaluate('x + 1', { x: 10 });       // 11
-   */
-  evaluate(formula, localContext = {}) {
+  evaluate(formula: string, localContext: Record<string, any> = {}): any {
     const ast = this.parse(this.tokenize(formula));
     const ctx = Object.assign(Object.create(this.context), localContext);
 
-    const run = (node) => {
+    const run = (node: ASTNode): any => {
       if (typeof node !== 'object' || node === null) return node;
 
       if (node.type === 'variable') {
@@ -265,19 +217,10 @@ class FormulaEvaluator {
     return run(ast);
   }
 
-  /**
-   * Returns the variable names referenced in a formula (excludes function names).
-   *
-   * @param {string} formula - The formula to analyze
-   * @returns {string[]} Deduplicated array of variable names
-   *
-   * @example
-   * evaluator.getDependencies('sum(x, y) + z'); // ['x', 'y', 'z']
-   */
-  getDependencies(formula) {
+  getDependencies(formula: string): string[] {
     const ast = this.parse(this.tokenize(formula));
-    const deps = new Set();
-    const walk = (node) => {
+    const deps = new Set<string>();
+    const walk = (node: ASTNode): void => {
       if (typeof node !== 'object' || node === null) return;
       if (node.type === 'variable') deps.add(node.name);
       else if (node.type === 'function') node.args.forEach(walk);
@@ -286,7 +229,5 @@ class FormulaEvaluator {
     return Array.from(deps);
   }
 }
-
-FormulaEvaluator.TOKEN_TYPES = TOKEN_TYPES;
 
 export default FormulaEvaluator;

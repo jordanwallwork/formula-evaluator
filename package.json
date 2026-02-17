@@ -2,21 +2,30 @@
   "name": "formula-evaluator",
   "version": "1.2.1",
   "description": "A lightweight formula evaluator with dependency tracking and static analysis.",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./functions": "./src/functions.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./functions": {
+      "types": "./dist/functions.d.ts",
+      "default": "./dist/functions.js"
+    }
   },
   "type": "module",
   "files": [
+    "dist",
     "src",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
+    "build": "esbuild src/index.ts src/functions.ts --outdir=dist --format=esm --minify && tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test && npm run build"
   },
   "keywords": [
     "formula",
@@ -31,6 +40,8 @@
     "url": "git+https://github.com/jordanwallwork/formula-evaluator.git"
   },
   "devDependencies": {
+    "esbuild": "^0.27.3",
+    "typescript": "^5.9.3",
     "vitest": "^3.0.0"
   }
 }
