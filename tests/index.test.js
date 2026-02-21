@@ -183,11 +183,11 @@ describe('FormulaEvaluator', () => {
     });
 
     it('checks equality (true)', () => {
-      expect(evaluator.evaluate('5 = 5')).toBe(true);
+      expect(evaluator.evaluate('5 == 5')).toBe(true);
     });
 
     it('checks equality (false)', () => {
-      expect(evaluator.evaluate('5 = 3')).toBe(false);
+      expect(evaluator.evaluate('5 == 3')).toBe(false);
     });
 
     it('checks inequality (true)', () => {
@@ -421,8 +421,8 @@ describe('FormulaEvaluator', () => {
     });
 
     it('and() works with expressions', () => {
-      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 2 })).toBe(true);
-      expect(evaluator.evaluate('and(x = 1, y = 2)', { x: 1, y: 3 })).toBe(false);
+      expect(evaluator.evaluate('and(x == 1, y == 2)', { x: 1, y: 2 })).toBe(true);
+      expect(evaluator.evaluate('and(x == 1, y == 2)', { x: 1, y: 3 })).toBe(false);
     });
 
     it('or() returns true when any is truthy', () => {
@@ -434,8 +434,8 @@ describe('FormulaEvaluator', () => {
     });
 
     it('or() works with expressions', () => {
-      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 2 })).toBe(true);
-      expect(evaluator.evaluate('or(x = 1, x = 2)', { x: 3 })).toBe(false);
+      expect(evaluator.evaluate('or(x == 1, x == 2)', { x: 2 })).toBe(true);
+      expect(evaluator.evaluate('or(x == 1, x == 2)', { x: 3 })).toBe(false);
     });
   });
 
@@ -680,14 +680,16 @@ describe('FormulaEvaluator', () => {
       expect(evaluator.evaluate('10 / 2')).toBe(5);
     });
 
-    it('logical AND with &', () => {
-      expect(evaluator.evaluate('true & true')).toBe(true);
-      expect(evaluator.evaluate('true & false')).toBe(false);
+    it('logical AND with &&', () => {
+      expect(evaluator.evaluate('true && true')).toBe(true);
+      expect(evaluator.evaluate('true && false')).toBe(false);
     });
 
-    it('logical OR with |', () => {
-      expect(evaluator.evaluate('false | true')).toBe(true);
-      expect(evaluator.evaluate('false | false')).toBe(false);
+    it('logical OR with ||', () => {
+      expect(evaluator.evaluate('false || true')).toBe(true);
+      expect(evaluator.evaluate('false || false')).toBe(false);
+		expect(evaluator.evaluate('false || "fallback"')).toBe("fallback");
+		expect(evaluator.evaluate('"" || "fallback"')).toBe("fallback");
     });
 
     it('logical NOT with !', () => {
@@ -736,8 +738,8 @@ describe('FormulaEvaluator', () => {
     });
 
     it('if with equality check', () => {
-      expect(evaluator.evaluate('if(x = 1, "one", "other")', { x: 1 })).toBe('one');
-      expect(evaluator.evaluate('if(x = 1, "one", "other")', { x: 2 })).toBe('other');
+      expect(evaluator.evaluate('if(x == 1, "one", "other")', { x: 1 })).toBe('one');
+      expect(evaluator.evaluate('if(x == 1, "one", "other")', { x: 2 })).toBe('other');
     });
 
     it('upper with join', () => {

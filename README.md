@@ -109,7 +109,7 @@ const ast = evaluator.parse(tokens);
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `=` | Equality | `5 = 5` → `true` |
+| `==` | Equality | `5 == 5` → `true` |
 | `!=` | Inequality | `5 != 3` → `true` |
 | `>` | Greater than | `5 > 3` → `true` |
 | `>=` | Greater than or equal | `5 >= 5` → `true` |
@@ -120,8 +120,8 @@ const ast = evaluator.parse(tokens);
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `&` | Logical AND | `true & true` → `true` |
-| `\|` | Logical OR | `false \| true` → `true` |
+| `&&` | Logical AND | `true && true` → `true` |
+| `\|\|` | Logical OR | `false \|\| true` → `true` |
 | `!` | Logical NOT | `!false` → `true` |
 
 ## Supported Types

@@ -23,7 +23,7 @@ const TOKEN_RULES: TokenRule[] = [
   { type: TOKEN_TYPES.STRING,     regex: /"([^"]*)"/g },
   { type: TOKEN_TYPES.NUMBER,     regex: /\d*\.?\d+/g },
   { type: TOKEN_TYPES.IDENTIFIER, regex: /[a-zA-Z][\w\d]*/g },
-  { type: TOKEN_TYPES.OPERATOR,   regex: /!=|>=|<=|[+=\-><&|/*!/]/g },
+  { type: TOKEN_TYPES.OPERATOR,   regex: /!=|==|>=|<=|&&|\|\||[+\-></*!]/g },
   { type: TOKEN_TYPES.DELIMITER,  regex: /[(),]/g },
   { type: TOKEN_TYPES.WHITESPACE, regex: /\s+/g },
 ];
@@ -48,8 +48,8 @@ interface VariableNode {
 
 type ASTNode = FunctionNode | VariableNode | number | string | boolean | null;
 
-const OP_MAP: Record<string, string> = { '+': '__add', '-': '__sub', '=': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&': '__and', '|': '__or' };
-const OP_PRECEDENCE: Record<string, number> = { '|': 1, '&': 2, '=': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
+const OP_MAP: Record<string, string> = { '+': '__add', '-': '__sub', '==': '__eq', '!=': '__neq', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '*': '__mul', '/': '__div', '&&': '__and', '||': '__or' };
+const OP_PRECEDENCE: Record<string, number> = { '||': 1, '&&': 2, '==': 3, '!=': 3, '>': 4, '>=': 4, '<': 4, '<=': 4, '+': 5, '-': 5, '*': 6, '/': 6 };
 
 class FormulaEvaluator {
   static TOKEN_TYPES = TOKEN_TYPES;
