@@ -67,7 +67,11 @@ export const builtinFunctions: Readonly<Record<string, FunctionDef>> = Object.fr
   },
 
   round: {
-    fn: (n: any, d: any) => Number(Math.round(Number(n + 'e' + d)) + 'e-' + d),
+    fn: (n: any, d: any) => {
+      const dec = Number(d);
+      const [base, exp = '0'] = String(Number(n)).split('e');
+      return Number(Math.round(Number(`${base}e${Number(exp) + dec}`)) + 'e-' + dec);
+    },
     description: 'Rounds a number to a specific decimal precision',
   },
 
