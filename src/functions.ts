@@ -82,7 +82,7 @@ export const builtinFunctions: Readonly<Record<string, FunctionDef>> = Object.fr
   },
 
   mean: {
-    fn: (...args: number[]) => args.reduce((a, b) => a + b, 0) / args.length,
+    fn: (...args: any[]) => args.reduce((a, b) => Number(a) + Number(b), 0) / args.length,
     description: 'Returns the arithmetic mean of all arguments',
   },
 
