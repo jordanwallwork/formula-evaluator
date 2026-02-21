@@ -129,6 +129,17 @@ const ast = evaluator.parse(tokens);
 - **Numbers**: `42`, `3.14`, `0.5`
 - **Strings**: `"hello world"`
 - **Booleans**: `true`, `false`
+- **Null**: `null`
+
+The `null` keyword evaluates to JavaScript `null` and works naturally with null-aware functions:
+
+```js
+evaluator.evaluate('null');                        // null
+evaluator.evaluate('coalesce(null, "fallback")');  // "fallback"
+evaluator.evaluate('isblank(null)');               // true
+evaluator.evaluate('if(null, "yes", "no")');       // "no"
+evaluator.evaluate('null == null');                // true
+```
 
 ### `registerFunction(name, fn)`
 

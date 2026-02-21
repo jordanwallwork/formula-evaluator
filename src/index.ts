@@ -141,6 +141,7 @@ class FormulaEvaluator {
       if (token.type === TOKEN_TYPES.NUMBER) return parseFloat(token.value);
       if (token.value === 'true') return true;
       if (token.value === 'false') return false;
+      if (token.value === 'null') return null;
       if (token.type === TOKEN_TYPES.STRING) return token.value;
 
       if (token.type === TOKEN_TYPES.IDENTIFIER) {

@@ -108,6 +108,11 @@ describe('FormulaEvaluator', () => {
       expect(ast).toBe(false);
     });
 
+    it('parses null literal', () => {
+      const ast = evaluator.parse(evaluator.tokenize('null'));
+      expect(ast).toBeNull();
+    });
+
     it('parses a variable reference', () => {
       const ast = evaluator.parse(evaluator.tokenize('x'));
       expect(ast).toEqual({ type: 'variable', name: 'x' });
@@ -169,6 +174,10 @@ describe('FormulaEvaluator', () => {
 
     it('evaluates boolean false', () => {
       expect(evaluator.evaluate('false')).toBe(false);
+    });
+
+    it('evaluates null literal', () => {
+      expect(evaluator.evaluate('null')).toBeNull();
     });
   });
 
@@ -359,6 +368,28 @@ describe('FormulaEvaluator', () => {
   });
 
   // --- Evaluate: Utility Functions ---
+  describe('evaluate - null literal', () => {
+    it('null is treated as null by coalesce', () => {
+      expect(evaluator.evaluate('coalesce(null, "fallback")')).toBe('fallback');
+    });
+
+    it('null is treated as blank by isblank', () => {
+      expect(evaluator.evaluate('isblank(null)')).toBe(true);
+    });
+
+    it('null equals null', () => {
+      expect(evaluator.evaluate('null == null')).toBe(true);
+    });
+
+    it('null does not equal a value', () => {
+      expect(evaluator.evaluate('null == 0')).toBe(false);
+    });
+
+    it('null as function argument', () => {
+      expect(evaluator.evaluate('if(null, "yes", "no")')).toBe('no');
+    });
+  });
+
   describe('evaluate - coalesce', () => {
     it('returns first non-null value', () => {
       expect(evaluator.evaluate('coalesce("hello", "world")')).toBe('hello');
